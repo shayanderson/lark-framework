@@ -1,0 +1,1452 @@
+# Lark Framework
+
+Lark is a modern, lightweight app framework designed specifically for developing REST APIs.
+
+- [Installation](#installation)
+- [Routing](#routing)
+  - [Routes](#routes)
+  - [Route Parameters](#route-parameters)
+  - [Route Actions](#route-actions)
+  - [Middleware](#middleware)
+- [Logging](#logging)
+- [Exception Handling](#exception-handling)
+- [Configuration](#configuration)
+- [Environment Configuration](#environment-configuration)
+- [Request](#request)
+- [Response](#response)
+- [Model](#model)
+- [Database](#database)
+- [Validator](#validator)
+  - [Validation Types & Rules](#validation-types--rules)
+- [Filter](#filter)
+- [HTTP Client](#http-client)
+- [CLI](#cli)
+- [Helpers](#helpers)
+
+## Installation
+
+Requirements:
+
+- PHP 7.4, 8
+- PHP extensions
+  - Required
+	- [...]
+  - Optional
+	- [curl](https://www.php.net/manual/en/book.curl.php) - if using `Lark\Http\Client`
+
+#### Composer Install
+```
+composer require lark/framework
+```
+
+## Routing
+
+The router is used to dispatch route actions and middleware.
+
+```php
+// bootstrap
+// ...
+
+// define routes
+router()
+	// get([route], [action])
+	->get('/', function() {});
+
+// run app
+app()->run();
+```
+
+### Routes
+
+There are multiple ways to define routes.
+
+```php
+// routes for HTTP specific methods:
+router()->delete('/route', function(){});
+router()->get('/route', function(){});
+router()->head('/route', function(){});
+router()->options('/route', function(){});
+router()->patch('/route', function(){});
+router()->post('/route', function(){});
+router()->put('/route', function(){});
+
+// route for ALL HTTP methods
+router()->all('/route', function(){});
+// route for multiple HTTP methods
+router()->route(['GET', 'POST'], '/route', function(){});
+```
+
+#### Regular Expression Routes
+
+Regular expression routes use [PCRE](https://www.php.net/manual/en/book.pcre.php) patterns for matching routes.
+
+```php
+// match all routes that begin with "/api"
+router()->get('/api.*?', function(){});
+```
+
+#### Route Groups
+
+Route groups can be used to simplify defining similar routes.
+
+```php
+router()
+	->group('/api/users') // group([base-route])
+	->get('/', function(){}) // "/api/users"
+	->get('/active', function(){}); // "/api/users/active"
+```
+
+#### Route Group Loading
+
+Route groups can be defined in *route files* which are loaded during routing (lazy load routes).
+
+```php
+// bootstrap routes directory
+// ...
+
+router()->load([
+	// [base-route] => [file]
+	'/api/users' => 'users'
+]);
+
+// in routes directory file "users.php" defines routes
+// the group('/api/users') method does not need to be called (handled by load() method)
+router()
+	->get('/', function(){}) // "/api/users"
+	->get('/active', function(){}); // "/api/users/active"
+```
+
+Inside route files `router()` should only be called once to avoid false route no match errors.
+
+```php
+// incorrect:
+router()->bind(function(){});
+router()->get('/', function(){});
+// correct:
+router()
+	->bind(function(){})
+	->get('/', function(){});
+```
+
+### Route Actions
+
+Route actions are executed when a route is matched. Route actions can be a callable function (`Closure`) or array with `[class, method]`. The first route matched is the only route action that will be executed.
+
+```php
+// function will be called on route match
+router()->get('/example1', function(){
+	return 'hello'; // return string to output as html/
+});
+
+// class method "App\Controller\ExampleController::hello()" will be called on route match
+router()->get('/example2', [App\Controller\ExampleController::class, 'hello']);
+```
+
+### Route Not Found Action
+
+If no route match is found a not found action can be defined. The HTTP response status code is auto set to `404`.
+
+```php
+router()->notFound(function(string $requestMethod, string $requestPath){});
+```
+
+If a not found action is not defined a `Lark\Router\NotFoundException` will be thrown.
+
+### Route Parameters
+
+#### Named Parameters
+
+Route named parameters are required parameters that do not use regular expressions. Multiple name parameters are allowed.
+
+```php
+router()->get('/users/{id}', function($id){});
+```
+
+#### Optional Named Parameters
+
+Route optional named parameters are optional parameters that do not use regular expressions. Optional named parameters can only be used at the end of the route. Multiple optional named parameters are allowed.
+
+```php
+router()->get('/users/{id}/{groupId?}', function($id, $groupId = null){});
+```
+
+In this example the `groupId` parameter is optional, so route `/users/5` and `/users/5/10` would both match.
+
+#### Regular Expression Parameters
+
+Regular expressions can be used to define parameters using [PCRE](https://www.php.net/manual/en/book.pcre.php) patterns. Multiple regular expression parameters are allowed.
+
+```php
+// match digits
+router()->get('/users/(\d+)', function(int $id){});
+// or match alphanumeric with length of 8
+router()->get('/users/([a-z0-9]{8})', function(string $id) {});
+```
+
+### Middleware
+
+Middleware is a single or multiple actions that are executed before a route action is called. Middleware actions can be executed always or only when a route is matched. Middleware must be defined _before_ routes are defined. Middleware actions follow the same structure as [Route Actions](#route-actions). The arguments `Lark\Request $req` and `Lark\Response $res` are passed to all middleware actions.
+
+```php
+// executed always
+router()->bind(function(Lark\Request $req, Lark\Response $res){});
+// executed if any route is matched
+router()->matched(function(Lark\Request $req, Lark\Response $res){});
+
+// define routes
+// ...
+```
+
+Multiple middleware actions can be set.
+
+```php
+// single action
+router()->bind(function(){});
+// multiple actions
+router()->bind(function(){}, [MyClass::class, 'myMethod']);
+// array of actions
+router()->bind([
+	function(){},
+	function(){}
+]);
+```
+
+#### Route Middleware
+
+Route specific middleware actions are only executed if the route is matched.
+
+```php
+// method([methods], [route], [...actions])
+router()->map(['GET'], '/api.*?', function(){});
+
+router()->get('/api/users', function(){});
+```
+
+If the HTTP request is `/api/users` then both the middleware action and route action would be executed.
+
+#### Route Group Middleware
+
+Middleware can be defined to be used only on a specific route group. Route group middleware actions are only executed if a group route is matched.
+
+```php
+router()
+	// group([base-route], [...actions])
+	->group('/api/users', function(){})
+	->get('/', function(){}) // "/api/users"
+	->get('/{id}', function($id){}) // "/api/users/{id}"
+```
+
+#### After Middleware
+After middlware always runs after a route action has been called, even if the route does not exist.
+```php
+router()->after(function(){}, [MyClass::class, 'myMethod']);
+```
+
+## Logging
+
+`Lark\Logger` is a logging helper. The helper function [`logger()`](#helper-logger) is available.
+
+```php
+logger('channel')->critical('message', [context]);
+logger('channel')->debug('message', [context]);
+logger('channel')->error('message', [context]);
+logger('channel')->info('message', [context]);
+logger('channel')->warning('message', [context]);
+```
+
+Logging info level record example.
+
+```php
+// bootstrap log handler
+app()->logHandler = new App\LogHandler;
+Lark\Logger::handler(app()->logHandler);
+
+// ...
+
+// log info level record
+logger('user')->info('User has been authorized', ['userId' => $user->id]);
+
+// ...
+
+// output log example
+print_r( app()->logHandler->close() );
+```
+
+Global context can be added to all context sent in log record.
+
+```php
+Lark\Logger::globalContext(['sessionId' => $session->id]);
+// ...
+logger('user')->info('User has signed out', ['userId' => $user->id]);
+// context is: ['sessionId' => x, 'userId' => y]
+```
+
+## Exception Handling
+
+Exceptions can be handled using the exception handler.
+
+```php
+// bootstrap
+// ...
+
+// define routes
+// ...
+
+try
+{
+	// run app
+	app()->run();
+}
+catch (Throwable $th)
+{
+	new App\ExceptionHandler($th);
+}
+```
+
+Example `App\ExceptionHandler` class.
+
+```php
+namespace App;
+use Throwable;
+class ExceptionHandler
+{
+	public function __construct(Throwable $th)
+	{
+		\Lark\Exception::handle($th, function (array $info) use ($th)
+		{
+			$code = $th->getCode();
+			if (!$code)
+			{
+				$code = 500;
+			}
+
+			// log error
+			// ...
+
+			// respond with error
+			app()->response()
+				->code($code)
+				->json($info);
+
+			// --or-- continue to throw exception
+			throw $th;
+		});
+	}
+}
+```
+
+## Configuration
+
+Framework configuration and mapping can be set with the `use()` method.
+
+### Database Connections
+
+Database connections are registered using the syntax `db.connection.[connectionId]` and accessed using the syntax `[connectionId]$[database]$[collection]`.
+
+```php
+// setup default MongoDB database connection with connectionId "default"
+// the first registered connection is always the default connection
+// regardless of connectionId
+app()->use('db.connection.default', [
+	'hosts' => ['127.0.0.1'],
+	'username' => 'test',
+	'password' => 'secret',
+	// 'replicaSet' => 'rsNameHere' (optional)
+    // options that override global database options
+    // (optional, see database global options below)
+    // 'options' => []
+]);
+
+// register second connection with connectionId "myconn"
+app()->use('db.connection.myconn', [...]);
+
+// ...
+
+// use default connection (no connectionId required):
+$db = app()->db('dbName$collectionName');
+
+// use non-default connection (connectionId required):
+$db2 = app()->db('myConn2$dbName$collectionName');
+```
+
+### Database Global Options
+
+Database global options can be set using `db.options`.
+
+```php
+app()->use('db.options', [
+	'db.allow' => [], // allow access to only specific databases
+	'db.deny' => ['admin', 'config', 'local'], // restrict access to databases
+	'debug.log' => false, // add debug level database messages to logger
+	'find.limit' => 10_000 // find "limit" for find options
+
+]);
+```
+
+### Validator Custom Rules
+
+Custom validator rules can be registered using `validator.rule.[type].[ruleClassName]`.
+
+```php
+app()->use('validator.rule.string.beginWithEndWith', App\Validator\BeginWithEndWith::class);
+```
+
+## Environment Configuration
+
+`Lark\Env` is an app environment configuration helper. The helper function [`env()`](#helper-env) is available.
+
+Example `.env` file.
+
+```
+DB_USER=myuser
+DB_PWD=secret
+```
+
+Example usage.
+
+```php
+// load from file (bootstrap)
+Lark\Env::getInstance()->load(DIR_ROOT . '/.env');
+
+$dbUser = env('DB_USER'); // myuser
+$dbPassword = env('DB_PWD'); // secret
+
+// return default value "default" if key does not exist
+$dbName = env('DB_NAME', 'default');
+
+// for required env keys do not use a default value argument
+// which will throw exception if key does not exist
+$dbHost = env('DB_HOST');
+// Lark\Exception exception thrown: Invalid key "DB_HOST"
+```
+
+Other `Lark\Env` methods: `fromArray(array $array)`, `has(string $key): bool` and `toArray(): array`.
+
+## Request
+
+`Lark\Request` is an HTTP request helper with input sanitizing.
+
+`POST` request ( `Content-Type: application/json` ) with JSON body like `{"name": "Shay", "contact": {"email": "example@example.com"}}` example.
+
+```php
+$data = app()->request()->json(); // get all as object (no auto sanitizing)
+
+// or get individual fields
+$name = app()->request()->json('name')->string();
+if(app()->request()->json('contact.email')->has())
+{
+	$email = app()->request()->json('contact.email')->email();
+}
+```
+
+`POST` request ( `Content-Type: application/x-www-form-urlencoded` ) example.
+
+```php
+if(app()->request()->isMethod('POST'))
+{
+	$name = app()->request()->input('name')->string();
+	if(app()->request()->input('email')->has())
+	{
+		$email = app()->request()->input('email')->email();
+	}
+}
+```
+
+`GET` request example.
+
+```php
+// request "/?id=5&name=Shay"
+print_r([
+	'id' => app()->request()->query('id')->integer(),
+	// use "default" as value if query "name" does not exist
+	'name' => app()->request()->query('name', 'default')->string()
+]); // Array ( [id] => 5 [name] => Shay )
+```
+
+> Filter options and [flags](https://www.php.net/manual/en/filter.filters.flags.php) can be used with filter methods: `app()->request()->input('name')->string(['flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK])`
+
+Request cookie example.
+
+```php
+if(app()->request()->cookie('myCookie')->has())
+{
+	var_dump( app()->request()->cookie('myCookie')->string() );
+}
+```
+
+### Request Session
+
+`Lark\Request\Session` is a session helper.
+
+```php
+app()->session->set('user.id', 5); // creates session data: [user => [id => 5]]
+// ...
+if(app()->session->has('user.id'))
+{
+	$userId = app()->session->get('user.id');
+}
+```
+
+`Lark\Request\SessionFlash` can be used to store short-term data where the data is available from when set through the following request, example:
+
+```php
+app()->session()->flash()->set('userError', 'Invalid session');
+// redirect, then use message
+echo app()->session()->flash()->get('userError');
+// message is no longer available on next request
+```
+
+### Request Methods
+
+- `body(bool $convertHtmlEntities = true): string` - request raw body data getter
+- `contentType(): string` - content-type getter
+- `cookie(string $key, $default = null): Lark\Request\Cookie` - cookie input object getter
+- `hasHeader(string $key): bool` - check if header key exists
+- `header(string $key): string` - header value getter
+- `headers(): array` - get all headers
+- `host(): string` - HTTP host value getter, like `www.example.com`
+- `input(string $key, $default = null): Lark\Request\Input` - input object getter for `POST`
+- `ipAddress(): string` - IP address getter
+- `isContentType(string $contentType): bool` - validate request content-type
+- `isMethod(string $method): bool` - validate request method
+- `isSecure(): bool` - check if request is secure (HTTPS)
+- `json(string $field = null, $default = null)` - JSON request body helper
+- `method(): string` - request method getter
+- `path(): string` - path getter, like `/the/path`
+- `pathWithQueryString(): string` - path with query string getter, like `/the/path?x=1`
+- `port(): int` - port getter
+- `query(string $key, $default = null): Lark\Request\Query` - query input object getter for `GET`
+- `queryString(): string` - query string getter, like `x=1&y=2`
+- `scheme(): string` - URI scheme getter, like `http`
+- `session(): Lark\Request\Session` - session object getter
+- `uri(): string` - URI getter, like `http://example.com/example?key=x`
+
+### Request Input Methods
+
+Input methods include methods for request input objects: `Cookie`, `Input` and `Query`.
+
+- `email(array $options = [])` - value getter, sanitize as email
+- `float(array $options = ['flags' => FILTER_FLAG_ALLOW_FRACTION])` - value getter, sanitize as float
+- `has(): bool` - check if key exists
+- `integer(array $options = [])` - value getter, sanitize as integer
+- `string(array $options = [])` - value getter, sanitize as string
+- `url(array $options = [])` - value getter, sanitize as URL
+
+### Session Methods
+
+Session methods `clear()`, `get()`, `has()` and `set()` all use dot notation for keys, for example: `set('user.isActive', 1) equals: [user => [isActive => 1]]`.
+
+- `clear(string $key)` - clear a key
+- `static cookieOptions(array $options)` - set cookie options
+  - default options are: `['lifetime' => 0, 'path' => '/', 'domain' => '', 'secure' => false, 'httponly' => false]`
+- `destroy()` - destroy a session
+- `get(string $key)` - value getter
+- `has(string $key): bool` - check if key exists
+- `isSession(): bool` - check if session exists
+- `set(string $key, $value)` - key/value setter
+- `toArray(): array` - session array getter
+
+## Response
+
+`Lark\Response` is an HTTP response helper.
+
+```php
+// set header, status code 200, content-type and send JSON response
+app()->response()
+	->header('X-Test', 'value')
+	->code(Lark\Response::HTTP_OK)
+	->contentType('application/json') // not required when using json()
+	->json(['ok' => true]);
+// {"ok": true}
+```
+
+### Response Methods
+
+- `cacheOff(): Lark\Response` - disable cache using cache-control
+- `contentType(string $contentType): Lark\Response` - content-type setter
+- `cookie($key, $value, $expires, $path, $domain, $secure, $httpOnly): bool` - cookie setter
+- `cookieClear(string $key, string $path = '/'): bool` - remove cookie
+- `header(string $key, $value): Lark\Response` - header setter
+- `headerClear(string $key): Lark\Response` - remove header key
+- `headers(array $headers): Lark\Response` - headers setter using array
+- `json($data)` - respond with JSON payload (and content-type `application/json` in headers)
+- `redirect(string $location, bool $statusCode301 = false)` - send redirect
+- `send($data)` - respond with raw data payload
+- `code(int $code): Lark\Response` - response status code setter
+
+
+## Model
+
+`Lark\Model` is a model, entity and validation helper.
+
+```php
+namespace App\Model;
+class User extends \App\Model
+{
+	public static function schema(): array
+	{
+		return [
+			'name' => ['string', 'notEmpty'],
+			'age' => ['int', 'notEmpty'],
+			'isAdmin' => ['bool', 'required', ['default' => false]]
+		];
+	}
+}
+```
+
+The `App\Model\User` class can be used to simplify validation and creating an entity.
+
+```php
+$user = (new App\Model\User)->make([
+	'name' => 'Bob',
+	'age' => 25
+]);
+var_dump($user);
+// array(3) { ["name"]=> string(3) "Bob" ["age"]=> int(25) ["isAdmin"]=> bool(false) }
+
+// or an array can be used
+$user = (new App\Model\User)->makeArray([
+	['name' => 'Bob', 'age' => 25],
+	['name' => 'Jane', 'age' => 21]
+]);
+```
+
+The `ENTITY_FLAG_PARTIAL` flag can be set to allow missing fields that can be used for partial updates.
+
+```php
+$user = (new App\Model\User)->make([
+	'name' => 'Bob'
+], ENTITY_FLAG_PARTIAL);
+var_dump($user); // array(1) { ["name"]=> string(3) "Bob" }
+```
+
+The `ENTITY_FLAG_ID` flag can be set to require any field using the `id` rule.
+
+```php
+// schema: ['id' => ['string', 'id'], 'name' => ['string', notEmpty]]
+$user = (new App\Model\User)->make([
+	'name' => 'Bob'
+], ENTITY_FLAG_ID);
+// throws Lark\Validator\ValidatorException:
+// Validation failed: "id" must be a string
+```
+
+> Multiple entity flags can be set like: `ENTITY_FLAG_ID | ENTITY_FLAG_PARTIAL`
+
+
+
+# Database
+
+`Lark\Database` is a MongoDB database and collection helper.
+
+```php
+// bootstrap
+// setup default MongoDB database connection with connectionId "default"
+app()->use('db.connection.default', [...]);
+
+// register second connection with connectionId "myconn"
+app()->use('db.connection.myconn', [...]);
+
+// ...
+
+// get Database object instance
+// syntax for default connection: "[database]$[collection]"
+// syntax for other than default: "[connectionId]$[database]$[collection]"
+$db = app()->db('myDb$users');
+```
+
+#### Insert Documents
+```php
+// insert documents
+$docIds = $db->insert([
+	['name' => 'Test', 'role' => 'admin'],
+    ['name' => 'Test2', 'role' => 'admin']
+]);
+// Array ( [0] => 62ba4fd034faaf6fc132ef54 [1] => 62ba4fd034faaf6fc132ef55 )
+
+// insert single document
+$docId = $db->insertOne(['name' => 'Test3', 'role' => 'readonly']);
+```
+
+#### Find Documents
+```php
+// find documents
+$docs = $db->find(['role' => 'admin']);
+// Array ( [0] => Array ( [id] => 62ba4fd034faaf6fc132ef54 [name] => Test [role] => admin )
+// [1] => Array ( [id] => 62ba4fd034faaf6fc132ef55 [name] => Test2 [role] => admin ) )
+
+// find documents with "name" staring with "Test"
+$docs = $db->find(['name' => ['$regex' => '^Test']]);
+
+// find documents by IDs
+$docs = $db->findIds(['62ba4fd034faaf6fc132ef54', '62ba4fd034faaf6fc132ef55']);
+
+// find single document
+$doc = $db->findOne(['name' => 'Test2']);
+
+// find single document by ID
+$doc = $db->findId('62ba4fd034faaf6fc132ef54');
+```
+
+#### Update Documents
+```php
+// update documents
+$affected = $db->update(['role' => 'admin'], ['role' => 'admin2']);
+
+// update bulk
+$docIds = $db->updateBulk([
+	['id' => '62ba4fd034faaf6fc132ef55', 'role' => 'admin'],
+    [...]
+]);
+// Array ( [0] => 62ba4fd034faaf6fc132ef55 [1] => ... )
+
+// update single document by ID
+$newDoc = $db->updateId('62ba4fd034faaf6fc132ef55', ['role' => 'admin2']);
+
+// update single document
+$newDoc = $db->updateOne(['name' => 'Test2'], ['role' => 'admin']);
+```
+
+#### Replace Documents
+```php
+// replace bulk
+$docIds = $db->replaceBulk([
+	['id' => '62ba4fd034faaf6fc132ef55', 'name' => 'Test222'],
+    [...]
+]);
+// Array ( [0] => 62ba4fd034faaf6fc132ef55 [1] => ... )
+
+// replace single document by ID
+$newDoc = $db->replaceId('62ba4fd034faaf6fc132ef55',
+	['name' => 'Test2222', 'role' => 'admin']);
+
+// replace single document
+$newDoc = $db->replaceOne(['name' => 'Test2222'], ['name' => 'Test2', 'role' => 'admin']);
+```
+
+#### Delete Documents
+```php
+// delete documents (note: filter cannot be empty)
+$affected = $db->delete(['role' => 'admin']);
+
+// delete documents by IDs
+$affected = $db->deleteIds(['62ba4fd034faaf6fc132ef54', '62ba4fd034faaf6fc132ef55']);
+
+// delete single document
+$affected = $db->deleteOne(['name' => 'Test2']);
+
+// delete all documents in collection
+$affected = $db->deleteAll();
+```
+
+#### Collection Field Methods
+```php
+// create a new field
+// set default value to empty array
+$affected = $db->collectionField('tags')->create([]);
+
+// delete a field
+$affected = $db->collectionField('tags')->delete();
+
+// check if a field exists on all documents
+$exists = $db->collectionField('tags')->exists();
+
+// check if a field exists on any document
+$exists = $db->collectionField('tags')->exists(false);
+
+// remove value "mytag" from field "tags" array
+$affected = $db->collectionField('tags')->pull(
+	['id' => '62ba4fd034faaf6fc132ef54'],
+	'mytag'
+);
+
+// append values "mytag1" and "mytag2" to field "tags" array
+// these values will only be appended if they
+// don't already exists in the array
+// use $unique=false to always append
+$affected = $db->collectionField('tags')->push(
+	['id' => '62ba4fd034faaf6fc132ef54'],
+	['mytag1', 'mytag2']
+);
+
+// rename a field
+$affected = $db->collectionField('tags')->rename('tagsNew');
+```
+> Use dot notation for nested field names like `field1.field2`
+
+### Database Methods
+- `collectionField(string $field): Database\Field` - field helper
+- `count(array $filter = [], array $options = []): int` - count documents matching filter
+- `delete(array $filter, array $options = []): int` - delete documents matching filter
+- `deleteAll(array $options = []): int` - delete all documents
+- `deleteIds(array $ids, array $options = []): int` - delete documents by ID
+- `deleteOne(array $filter, array $options = []): int` - delete single document matching filter
+- `drop(): bool` - drop collection
+- `exists(): bool` - check if collection exists
+- `find(array $filter = [], array $options = []): array` - find documents matching filter
+- `findId($id, array $options = []): ?array` - find document by ID
+- `findIds(array $ids, array $options = []): array` - find documents by ID
+- `findOne(array $filter = [], array $options = []): ?array` - find single document matching filter
+- `has(array $filter, array $options = []): bool` - check if documents matching filter exist
+- `hasIds(array $ids, array $options = []): bool` - check if documents with IDs exist
+- `insert(array $documents, array $options = []): array` - insert documents
+- `insertOne($document, array $options = []): ?string` - insert single document
+- `ping(): bool` - ping command
+- `replaceBulk(array $documents, array $options = []): int` - bulk replace
+- `replaceId($id, $document, array $options = []): int` - replace single document
+- `replaceOne(array $filter, $document, array $options = []): int` - replace single document
+- `update(array $filter, $update, array $options = []): int` - update documents matching filter
+- `updateBulk(array $documents, array $options = []): int` - bulk update
+- `updateId($id, $update, array $options = []): int` - update document by ID
+- `updateOne(array $filter, $update, array $options = []): int` - update single document matching filter
+
+#### Database Field Methods
+- `create($defaultValue = null): int` - create field with default value
+- `delete(): int` - delete collection field
+- `exists(bool $allDocs = true): bool` - check if field exists or checks if field exists on any document if `!$allDocs`
+- `pull(array $filter, $value): int` - remove value from field array
+- `push(array $filter, $value, $unique = true): int` - append value to field array, if `$unique` will only append value if doesn't already exist in field array
+- `rename(string $newName): int` - rename field
+
+## Validator
+
+`Lark\Validator` is a validation helper.
+
+```php
+use Lark\Validator;
+
+$isValid = new Validator([
+	// data
+	'name' => 'Bob',
+	'age' => 25
+], [
+	// schema
+	'name' => ['string', 'notEmpty'],
+	'age' => ['int', 'notNull'],
+	'phone' => null, // no type (generic), optional
+	'title' => 'string' // string, optional
+])->validate(); // true
+```
+
+Assertion can be used during validation.
+
+```php
+new Validator([
+	'name' => null
+], [
+	'name' => ['string', 'notNull']
+])->assert();
+// throws Lark\Validator\ValidatorException:
+// Validation failed: "name" must be a string
+```
+
+### Validation Types & Rules
+
+Rules `notNull` and `notEmpty`, and sometimes `id`, are rules for all types that do not allow the value to be `null`.
+The rule `voidable` can be used for any fields that can be missing.
+
+- `generic` (no type, default) - any type allowed
+  - `notNull` - value cannot be `null`
+- `array` (or `arr`) - value can be `array` or `null`
+  - `allowed` - array values must be allowed `[allowed => [...]]`
+  - `length` - number of array items must be `[length => x]`
+  - `max` - array values cannot exceed maximum value of `[max => x]`
+  - `min` - array values cannot be lower than minimum value of `[min => x]`
+  - `notEmpty` - must be a non-empty `array`
+  - `notNull` - must be an `array`
+  - `unique` - array values must be unique
+- `boolean` (or `bool`) - must be `boolean` or `null`
+  - `notNull` - must be `boolean`
+- `float` - must be a `float` or `null`
+  - `between` - must be between both values `[between => [x, y]]`
+  - `max` - must be a maximum value of `[max => x]`
+  - `min` - must be a minimum value of `[min => x]`
+  - `notEmpty` - must be a `float` greater than zero
+  - `notNull` - must be a `float`
+- `integer` (or `int`) - must be an `integer` or `null`
+  - `between` - must be between both values `[between => [x, y]]`
+  - `id` - must be an `integer` when `ENTITY_FLAG_ID` flag is set
+  - `max` - must be a maximum value of `[max => x]`
+  - `min` - must be a minimum value of `[min => x]`
+  - `notEmpty` - must be an `integer` greater than zero
+  - `notNull` - must be an `integer`
+- `number` (or `num`) - must be a number or `null`
+  - `between` - must be between both values `[between => [x, y]]`
+  - `id` - must be a number when `ENTITY_FLAG_ID` flag is set
+  - `max` - must be a maximum value of `[max => x]`
+  - `min` - must be a minimum value of `[min => x]`
+  - `notEmpty` - must be a number greater than zero
+  - `notNull` - must be a number
+- `object` (or `obj`) - must be an `object` or `null`
+  - `notEmpty` - must be a non-empty `object`
+  - `notNull` - must be an `object`
+- `string` (or `str`) - must be a `string` or `null`
+  - `allowed` - value must be allowed `[allowed => [...]]`
+  - `alnum` - must only contain alphanumeric characters
+	- or, must only contain alphanumeric characters and whitespaces `[alnum => true]`
+  - `alpha` - must only contain alphabetic characters
+	- or, must only contain alphabetic characters and whitespaces `[alpha => true]`
+  - `contains` - must contain value `[contains => x]`
+	- or, must contain value (case-insensitive) `[contains => [x, true]]`
+  - `email` - must be a valid email address
+  - `hash` - hashes must be equal (timing attack safe) `[hash => x]`
+  - `id` - must be an `string` when `ENTITY_FLAG_ID` flag is set
+  - `ipv4` - must be valid IPv4 address
+  - `ipv6` - must be valid IPv6 address
+  - `json` - must be a valid JSON
+  - `length` - length must be number of characters `[length => x]`
+  - `match` - value must be a regular expression match `[match => x]`
+  - `max` - length must be a maximum number of characters `[max => x]`
+  - `min` - length must be a minimum number of characters `[min => x]`
+  - `notAllowed` - value must be allowed `[notAllowed => [...]]`
+  - `notEmpty` - must be a non-empty `string`
+  - `notNull` - must be a `string`
+  - `password` - passwords must match `[password => x]`
+  - `url` - must be a valid URL
+- `timestamp` - must be a timestamp or `null`
+  - `notNull` - must be a timestamp
+
+### Nested Fields
+
+Nested fields can be defined using the `fields` property.
+
+```php
+$isValid = new Validator([
+	// data
+	'name' => 'Bob',
+	'contact' => [
+		'email' => 'bob@example.com',
+		'phone' => [
+			'cell' => '555-5555',
+			'office' => '555-6666'
+		]
+	]
+], [
+	// schema
+	'name' => ['string', 'notEmpty'],
+	'contact' => [
+		'array',
+		'fields' => [
+			'email' => ['string', 'email'],
+			'phone' => [
+				'array',
+				'fields' => [
+					'cell' => 'string',
+					'office' => 'string'
+				]
+			]
+		]
+	]
+])->validate(); // true
+```
+
+### Assert Callback
+
+A callback can be used with the `assert()` method.
+
+```php
+new Validator([
+	'name' => null
+], [
+	'name' => ['string', 'required']
+])->assert(function(string $field, string $message, string $name = null){
+	// handle error
+	//...
+
+	// return true to halt
+	// return false to continue to throw validation exception
+	return true;
+});
+```
+
+### Custom Validation Rule
+
+Custom validation rules can be created.
+
+```php
+// validator.rule.[type].[name]
+app()->use('validator.rule.string.beginWithEndWith', App\Validator\BeginWithEndWith::class);
+
+// App\Validator\MyRule class:
+namespace App\Validator;
+class BeginWithEndWith extends \Lark\Validator\Rule
+{
+	private string $beginWith;
+	private string $endWith;
+
+	protected string $message = 'must begin with value and end with value';
+
+	public function __construct(string $beginWith, string $endWith)
+	{
+		$this->beginWith = $beginWith;
+		$this->endWith = $endWith;
+	}
+
+	public function validate($value): bool
+	{
+		$beginsWith = substr($value, 0, strlen($this->beginWith));
+		$endsWith = substr($value, -(strlen($this->endWith)));
+
+		return $beginsWith === $this->beginWith && $endsWith === $this->endWith;
+	}
+}
+
+// validation example
+new Validator([
+	'alias' => '123testXYZ'
+], [
+	'alias' => ['string', ['beginWithEndWith' => ['123', 'XYZ']]]
+])->validate(); // true
+```
+
+It is also possible to override existing rules.
+
+```php
+// validator.rule.[type].[name]
+// overwrite existing string rule "email"
+app()->use('validator.rule.string.email', 'App\\Validator\\Email');
+
+// App\Validator\Email class:
+namespace App\Validator;
+class Email extends \Lark\Validator\TypeString\Email
+{
+	public function validate($value): bool
+	{
+		// must be valid email and domain "example.com"
+		return parent::validate($value)
+			&& preg_match('/@example\.com$/i', $value) === 1;
+	}
+}
+
+// validation example
+new Validator([
+	'email' => 'test@example.com'
+], [
+	'email' => ['string', 'email']
+])->validate(); // true
+```
+
+
+
+## Filter
+
+`Lark\Filter` is a filter helper.
+
+```php
+$cleanStr = filter()->string($str);
+```
+
+Filter by array keys.
+
+```php
+$arr = ["one" => 1, "two" => 2, "three" => 3];
+
+// exclude filter
+print_r(
+	filter()->keys($arr, ["two" => 0])
+); // Array ( [one] => 1 [three] => 3 )
+
+// include filter
+print_r(
+	filter()->keys($arr, ["one" => 1, "two" => 1])
+); // Array ( [one] => 1 [two] => 2 )
+```
+
+### Filter Methods
+
+- `email($value, array $options = []): string` - sanitize value with email filter
+- `float($value, array $options = ['flags' => FILTER_FLAG_ALLOW_FRACTION]): float` - sanitize value with float filter
+- `integer($value, array $options = []): int` - sanitize value with integer filter
+- `keys(array $array, array $filter): array` - filters keys based on include or exclude filter
+- `string($value, array $options = ['flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH]): string` - sanitize value with string filter
+- `url($value, array $options = []): string` - sanitize value with url filter
+
+
+
+## HTTP Client
+
+`Lark\Http\Client` is a HTTP client helper.
+
+```php
+use Lark\Http\Client;
+$client = new Client;
+try
+{
+	$res = $client->get('http://example.com');
+	$headers = $client->headers();
+	$statusCode = $client->statusCode();
+
+	if($statusCode === 200)
+	{
+		// ok
+	}
+	else
+	{
+		// handle
+	}
+}
+catch (Lark\Http\HttpException $ex)
+{
+	// handle request/curl error
+}
+```
+
+Various HTTP methods are available.
+
+```php
+// DELETE request
+$client->delete('http://example.com', ['field1' => 'value']);
+// GET request
+$client->get('http://example.com', ['param' => 1]); // http://example.com?param=1
+// HEAD request
+$client->head('http://example.com');
+// OPTIONS request
+$client->options('http://example.com');
+// PATCH request
+$client->patch('http://example.com', ['field1' => 'value']);
+// POST request
+$client->post('http://example.com', ['field1' => 'value']);
+// PUT request
+$client->put('http://example.com', ['field1' => 'value']);
+```
+
+Strings can also be used to send JSON.
+
+```php
+$client = new Client([
+	'headers' => ['content-type' => 'application/json']
+]);
+// POST request with JSON string
+$client->post('http://example.com', json_encode(['field1' => 'value']));
+```
+
+Options can be set for all methods (will override default options).
+
+```php
+use Lark\Http\Client;
+$client = new Client(['url' => 'http://example.com', 'timeout' => 8]);
+$res = $client->get('/api/items'); // http://example.com/api/items
+$res2 = $client->post('/api/items', ['name' => 'My Item']);
+```
+
+Options can be set for individual methods (will override default options and options for all methods).
+
+```php
+$res = $client->get('/api/items', ['timeout' => 5]);
+```
+
+Options for `curl` can be set.
+
+```php
+use Lark\Http\Client;
+$client = new Client([
+	'curl' => [
+		CURLOPT_RESOLVE => ['test.loc:127.0.0.1']
+	]
+]);
+```
+
+### HTTP Client Options
+
+- `curl` - set options for `curl` using `CURLOPT_[...]` options
+- `headers` - set HTTP headers, which can be set using two methods
+	- `['headers' => ['My-Header' => 'value']]`
+	- `['headers' => ['My-Header: value']]`
+- `port` - set a custom port number
+- `proxy` - use an HTTP proxy
+- `redirects` - allow redirects
+- `timeout` - timeout in seconds for connection and exection
+- `url` - base URL for request methods
+- `verify` - verify peer's certificate and common name
+
+
+## CLI
+`Lark\Cli` is a CLI helper.
+```php
+// bootstrap
+// ...
+
+$cli = Lark\Cli::getInstance();
+
+// add command
+$cli->command('files', 'Print files in directory')
+	->arg('dir', 'Read directory')
+	->action(function(string $dir) {
+		// print files in directory $dir
+
+		// optional, exit with any code by returning an int
+		// return 1; // same as $cli->exit(1);
+	});
+	// or use class/method:
+	// ->action([MyClass::class, 'methodName'])
+
+// run app
+$cli->run($_SERVER['argv']);
+```
+Arguments and options can be set for a command, and each argument and option has optional settings.
+```php
+// set global option (separate from command options)
+$cli->option('-d, --debug', 'Enable debug mode', function() {
+	// enable here
+});
+
+$cli->command('files', 'Print files in directory')
+	->arg('dir', 'Read directory') // required by default
+	// set another optional argument that can have multiple values (array)
+	->arg('subdirs', 'Read subdirectories', ['optional', 'array'])
+	// add option for output file
+	->option('-o, --outputfile', 'Output to file')
+    // option test
+    ->option('-t, --test', 'Run test', ['optional'])
+	// add command action
+	->action(function(string $dir, ?array $subdirs, ?string $outputfile, ?bool $isTest) {
+		var_dump($dir, $subdirs, $outputfile, $isTest);
+	});
+
+// $ php ./app/cli.php files mydir subdir1 subdir2 --outputfile=/my/file -t
+// string(5) "mydir"
+// array(2) { [0] => string(7) "subdir1" [1] => string(7) "subdir2" }
+// string(8) "/my/file"
+// bool(true)
+```
+The CLI `Output` class is an output and style helper.
+```php
+$o = $cli->output();
+
+// output green text
+$o->colorGreen->echo('This is green text');
+// use multiple styles
+$o->colorBlue->styleUnderline->echo('More text');
+
+// style helper methods for common styles
+$o->error('Error'); // red background
+$o->info('Info'); // blue text
+$o->ok('Success'); // green text
+$o->warn('Warning'); // yellow text
+$o->dim('Muted'); // dim text
+
+// custom style helper methods can be registered
+$o::register('blink', function ($text, $end = PHP_EOL) use ($out) {
+	$out->styleBlink;
+	$out->echo($text, $end);
+});
+$o->bink('Blinking text'); // blinking text
+
+// override existing style helper methods
+$o::register('error', function ($text, $end = PHP_EOL) use ($out) {
+	$out->colorRed; // text color red (instead of bg red)
+	$out->stderr($text, $end); // send to stderr
+});
+$o->error('Oops'); // red text
+```
+The output `grid()` method is a grid helper that will evenly space columns.
+```php
+$data = [
+	[1, "one"],
+	[2, "two"],
+	[100, "one hundred"],
+	[3, "three"],
+];
+
+$out->grid($data, ['indent' => 2]);
+```
+Above example would output:
+```
+  1      one
+  2      two
+  100    one hundred
+  3      three
+```
+Helper for `confirm()`.
+```php
+// "Continue? (y/N)"
+if($cli->confirm("Continue?")) // ...
+// or yes by default: "Continue? (Y/n)"
+if($cli->confirm("Continue?", true)) // ...
+```
+Helper for `input()`.
+```php
+// "Enter value [DEFAULT]:"
+$val = $cli->input("Enter value:", "DEFAULT");
+// if no value is entered the value would be "DEFAULT"
+```
+
+### CLI Methods
+- `command(string $name, string $description, array $aliases = []): Command` - register a command
+- `confirm(string $question, bool $isDefaultYes = false)` - confirm yes/no helper
+- `exit($status = 0)` - exit app
+- `header(callable $callback)` - register a header callback used int `help()` method
+- `help()` - display help (auto invoked by `Cli`)
+- `input(string $text, $default = null)` - input helper
+- `option(string $option, string $description, callable $action)` - set global option
+- `output()` - CLI `Output` helper object getter
+- `run()` - run CLI app
+
+### CLI Command Methods
+- `action($callbackOrClassArray): Command` - set command action
+- `arg(string $arg, string $description, array $options = []): Command` - set argument
+	- Options:
+		- `array` - argument with multiple values (must be last in arguments list)
+		- `default` - default value, like: `['default' => 'the value']`
+		- `optional` - argument is optional
+- `option(string $option, string $description = '', array $options = []): Command` -set option
+	- Options:
+		- `default` - default value, like: `['default' => 'the value']`
+
+### CLI Output Propeties
+- `bgBlack` - style background black
+- `bgBlue` - style background blue
+- `bgCyan` - style background cyan
+- `bgGray` - style background gray
+- `bgGreen` - style background green
+- `bgPurple` - style background purple
+- `bgRed` - style background red
+- `bgWhite` - style background white
+- `bgYellow` - style background yellow
+- `bgLigthBlue` - style background light blue
+- `bgLightCyan` - style background light cyan
+- `bgLightGray` - style background light gray
+- `bgLightGreen` - style background light green
+- `bgLightPurple` - style background light purple
+- `bgLightRed` - style background light red
+- `bgLightYellow` - style background light yellow
+- `colorBlack` - style color black
+- `colorBlue` - style color blue
+- `colorCyan` - style color cyan
+- `colorGray` - style color gray
+- `colorGreen` - style color green
+- `colorPurple` - style color purple
+- `colorRed` - style color red
+- `colorWhite` - style color white
+- `colorYellow` - style color yellow
+- `colorLigthBlue` - style color light blue
+- `colorLightCyan` - style color light cyan
+- `colorLightGray` - style color light gray
+- `colorLightGreen` - style color light green
+- `colorLightPurple` - style color light purple
+- `colorLightRed` - style color light red
+- `colorLightYellow` - style color light yellow
+- `styleBlink` - style blinking
+- `styleBold` - style bold
+- `styleDim` - style dim
+- `styleHidden` - style hidden
+- `styleInvert` - style invert
+- `styleUnderline` - style underline
+
+### CLI Output Methods
+- `dim(string $text, string $end = PHP_EOL): Output` - print dim style text
+- `echo(string $text = '', string $end = PHP_EOL): Output` - Print text to stdout
+- `error(string $text, string $end = PHP_EOL): Output` - print error text
+- `grid(array $data, array $options = []): Output` - print grid
+	- Options:
+		- `indent` - number of spaces to indent
+		- `padding` - column padding (default: `4`)
+		- `style` - apply style to column, like `['style' => ['name' => 'colorBlue']]`
+- `info(string $text, string $end = PHP_EOL): Output` - print info text
+- `ok(string $text, string $end = PHP_EOL): Output` - print success text
+- `warn(string $text, string $end = PHP_EOL): Output` - print warning text
+- `static register(string $name, callable $callback) ` - register style helper method
+- `stderr(string $text, string $end = PHP_EOL): Output` - output to *stderr*
+- `stdout(string $text = '', string $end = PHP_EOL): Output` - output to *stdout*
+- `styleIndent(int $number): Output` - indent style
+
+## Helpers
+Helpers are global helper functions.
+
+### Helper `app()`
+Access the main `App` instance using the `app()` function.
+```php
+app()->db('db$collection')->find();
+```
+
+### Helper `env()`
+The `env()` function is an environment variables helper.
+```php
+$dbName = env('DB_NAME');
+```
+> Read more in [Environment Configuration](#environment-configuration)
+
+### Helper `f()`
+The `f()` function returns a formatted string.
+```php
+echo f('First value: {}, second value: {}', 'one', 'two');
+// First value: one, second value: two
+
+// placeholder names can be used
+echo f('Name: {name}, age: {age}', 'Test', 25);
+// Name: Test, age: 25
+
+// array keys and placeholder names can be used
+// regardless of key/value order
+echo f('Name: {name}, age: {age}', ['age' => 25, 'name' => 'Test']);
+// Name: Test, age: 25
+```
+
+### Helper `halt()`
+The `halt()` function can be used to immediately return an HTTP response status code and optional JSON message.
+```php
+halt(404, 'Resource not found');
+// returns HTTP response status code 404
+// with JSON body {"message": "Resource not found"}
+
+// halt without message
+halt(500);
+```
+
+### Helper `logger()`
+Access a `Logger` instance using the `logger()` function.
+```php
+logger('channel')->info('message', ['context']);
+```
+> Read more in [Logging](#logging)
+
+### Helper `p()`
+The `p()` function outputs formatted (HTML/CLI) variables.
+```php
+p('test', 'this');
+p(['my' => 'array']);
+```
+
+### Helper `pa()`
+The `pa()` function is a variable printer.
+```php
+pa('test', 'this', ['and' => 'this'], 'end');
+// test this
+// Array
+// (
+//    [and] => this
+// )
+// end
+```
+
+### Helper `req()`
+Access the `Lark\Request` instance using the `req()` function.
+```php
+var_dump(
+	req()->path()
+);
+// string(1) "/"
+```
+> Read more in [Request](#request)
+
+### Helper `res()`
+Access the `Lark\Response` instance using the `res()` function.
+```php
+res()->contentType('application/json');
+```
+> Read more in [Response](#response)
+
+### Helper `router()`
+Access the `Lark\Router` instance using the `router()` function.
+```php
+router()->get('/', function() {
+	return 'home';
+});
+```
+> Read more in [Routing](#routing)
+
+### Helper `x()`
+The `x()` is a debugger and dumper helepr.
+```php
+x('value', ['test' => 'this']);
+```

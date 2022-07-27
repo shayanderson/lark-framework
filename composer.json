@@ -1,0 +1,26 @@
+{
+	"name": "lark/framework",
+	"description": "Lark Framework",
+	"keywords": ["lark", "framework"],
+	"license": "MIT",
+	"homepage": "https://github.com/shayanderson/lark-framework",
+	"support": {
+		"issues": "https://github.com/shayanderson/lark-framework/issues",
+		"source": "https://github.com/shayanderson/lark-framework"
+	},
+	"authors": [
+		{
+			"name": "Shay Anderson",
+			"email": "shaycoder@gmail.com"
+		}
+	],
+	"require": {
+		"mongodb/mongodb": "^1.5"
+	},
+	"autoload": {
+		"files": ["src/Lark/functions.php"],
+		"psr-4": {
+			"Lark\\": "src/Lark/"
+		}
+	}
+}
