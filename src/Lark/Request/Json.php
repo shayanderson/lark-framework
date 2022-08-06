@@ -58,7 +58,7 @@ class Json extends AbstractInput
 	{
 		if (self::$arr === null)
 		{
-			self::$arr = \Lark\App::getInstance()->request()->json(true);
+			self::$arr = req()->json(true);
 		}
 
 		return self::$arr;

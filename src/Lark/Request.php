@@ -114,11 +114,7 @@ class Request extends Factory\Singleton
 										)
 									)
 								)
-							)] = filter_var(
-								$k,
-								FILTER_SANITIZE_STRING,
-								FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
-							);
+							)] = filter_var($k, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 						}
 					}
 					return $h;
@@ -129,11 +125,7 @@ class Request extends Factory\Singleton
 			foreach ($h as $k => $v)
 			{
 				unset($h[$k]);
-				$h[strtolower($k)] = filter_var(
-					$v,
-					FILTER_SANITIZE_STRING,
-					FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
-				);
+				$h[strtolower($k)] = filter_var($v, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 			}
 		}
 
@@ -150,22 +142,19 @@ class Request extends Factory\Singleton
 		if (!$host = filter_input(
 			INPUT_SERVER,
 			'HTTP_HOST',
-			FILTER_SANITIZE_STRING,
-			FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+			FILTER_SANITIZE_FULL_SPECIAL_CHARS
 		))
 		{
 			if (!$host = filter_input(
 				INPUT_SERVER,
 				'SERVER_NAME',
-				FILTER_SANITIZE_STRING,
-				FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+				FILTER_SANITIZE_FULL_SPECIAL_CHARS
 			))
 			{
 				$host = (string)filter_input(
 					INPUT_SERVER,
 					'SERVER_ADDR',
-					FILTER_SANITIZE_STRING,
-					FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+					FILTER_SANITIZE_FULL_SPECIAL_CHARS
 				);
 			}
 		}
@@ -195,8 +184,7 @@ class Request extends Factory\Singleton
 		return (string)filter_input(
 			INPUT_SERVER,
 			'REMOTE_ADDR',
-			FILTER_SANITIZE_STRING,
-			FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+			FILTER_SANITIZE_FULL_SPECIAL_CHARS
 		);
 	}
 
@@ -233,47 +221,37 @@ class Request extends Factory\Singleton
 			(string)filter_input(
 				INPUT_SERVER,
 				'HTTPS',
-				FILTER_SANITIZE_STRING,
-				FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+				FILTER_SANITIZE_FULL_SPECIAL_CHARS
 			)
 		) === 'ON';
 	}
 
 	/**
-	 * JSON helper
+	 * JSON getter
 	 *
-	 * @param string $field
-	 * @param mixed $default
+	 * @param bool $returnArray
 	 * @return mixed
-	 * @throws \Lark\Exception (on JSON decode error)
 	 */
-	public function json(string $field = null, $default = null)
+	public function json(bool $returnArray = false)
 	{
 		if (!$this->isContentType('application/json'))
 		{
-			throw new Exception("Request Content-Type \"{$this->contentType()}\" is not supported");
+			throw new Exception(
+				'Request Content-Type "' . $this->contentType() . '" is not supported'
+			);
 		}
 
-		if (!func_num_args()) // JSON body getter
+		try
 		{
-			static $json;
-
-			if ($json === null)
-			{
-				$json = json_decode($this->body());
-
-				if (json_last_error() !== JSON_ERROR_NONE)
-				{
-					throw new Exception('Invalid JSON', [
-						'error' => json_last_error_msg()
-					]);
-				}
-			}
-
-			return $json;
+			$value = Json\Decoder::decode($this->body(), $returnArray);
+		}
+		catch (Exception $ex)
+		{
+			res()->code(400);
+			res()->json(['message' => $ex->getMessage()]);
 		}
 
-		return new Request\Json($field, $default);
+		return $value;
 	}
 
 	/**
@@ -290,6 +268,18 @@ class Request extends Factory\Singleton
 		}
 
 		return $this->json();
+	}
+
+	/**
+	 * JSON field object getter
+	 *
+	 * @param string $field
+	 * @param mixed $default
+	 * @return Request\Json
+	 */
+	public function jsonField(string $field, $default = null): Request\Json
+	{
+		return new Request\Json($field, $default);
 	}
 
 	/**
@@ -318,8 +308,7 @@ class Request extends Factory\Singleton
 		return (string)filter_input(
 			INPUT_SERVER,
 			'REQUEST_METHOD',
-			FILTER_SANITIZE_STRING,
-			FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+			FILTER_SANITIZE_FULL_SPECIAL_CHARS
 		);
 	}
 
@@ -334,8 +323,7 @@ class Request extends Factory\Singleton
 			(string)filter_input(
 				INPUT_SERVER,
 				'REQUEST_URI',
-				FILTER_SANITIZE_STRING,
-				FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+				FILTER_SANITIZE_FULL_SPECIAL_CHARS
 			),
 			PHP_URL_PATH
 		);
@@ -384,8 +372,7 @@ class Request extends Factory\Singleton
 		return (string)filter_input(
 			INPUT_SERVER,
 			'QUERY_STRING',
-			FILTER_SANITIZE_STRING,
-			FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH
+			FILTER_SANITIZE_FULL_SPECIAL_CHARS
 		);
 	}
 

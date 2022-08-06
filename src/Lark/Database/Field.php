@@ -82,7 +82,7 @@ class Field
 	}
 
 	/**
-	 * Debug helper
+	 * Debug
 	 *
 	 * @param mixed $results
 	 * @param string $message

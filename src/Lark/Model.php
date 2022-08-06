@@ -100,7 +100,7 @@ abstract class Model
 	 *
 	 * @return Schema
 	 */
-	final private static function &schemaGet(): Schema
+	private static function &schemaGet(): Schema
 	{
 		$schema = static::schema();
 

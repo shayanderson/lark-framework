@@ -10,16 +10,15 @@ declare(strict_types=1);
 
 namespace Lark;
 
+use Closure;
 use Lark\Map\Path as MapPath;
 
 /**
  * Configuration settings
  *
  * @author Shay Anderson
- *
- * #todo change name
  */
-class Config
+class Binding
 {
 	/**
 	 * Allowed paths
@@ -31,8 +30,12 @@ class Config
 		'db.connection.*',
 		// DB global options
 		'db.options',
-		// debug flag
-		'debug', #todo rm
+		// DB session handler
+		'db.session',
+		// debug dump flag
+		'debug.dump',
+		// debug log flag
+		'debug.log',
 		// custom validation rules
 		'validator.rule.*.*'
 	];
@@ -72,6 +75,25 @@ class Config
 	}
 
 	/**
+	 * Function for key/path getter
+	 *
+	 * @param string $key
+	 * @return Closure|null
+	 */
+	private static function getFn(string $key): ?Closure
+	{
+		$fns = [
+			// DB session handler
+			'db.session' => function (Model $model)
+			{
+				Database\Session::handler($model);
+			}
+		];
+
+		return $fns[$key] ?? null;
+	}
+
+	/**
 	 * Setter
 	 *
 	 * @param string $path
@@ -81,6 +103,15 @@ class Config
 	public static function set(string $path, $value): void
 	{
 		self::validatePath($path);
+
+		$fn = self::getFn($path);
+		if ($fn)
+		{
+			// call function and do not set value
+			$fn($value);
+			return;
+		}
+
 		MapPath::set(self::$map, $path, $value);
 	}
 

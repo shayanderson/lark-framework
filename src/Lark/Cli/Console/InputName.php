@@ -10,8 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Cli\CliException;
-
 /**
  * Input name
  *
@@ -47,14 +45,15 @@ class InputName
 	 */
 	public function __construct(string $inputName)
 	{
-		if (!$inputName)
-		{
-			throw new CliException('Input name cannot be empty');
-		}
-
 		$parts = explode('/', trim($inputName));
 
 		$this->name = array_pop($parts);
+
+		if (!$this->name)
+		{
+			throw new ConsoleException('Input name cannot be empty');
+		}
+
 		$this->validate($this->name);
 
 		$this->namespace = [];
@@ -135,8 +134,9 @@ class InputName
 
 		if (preg_match('/^[' . $allowedEscaped . ']+$/', $name) !== 1)
 		{
-			throw new CliException(
-				'Invalid name, name can only contain characters "' . $allowed . '"'
+			throw new ConsoleException(
+				'Invalid name, name can only contain characters "' . $allowed . '"',
+				['name' => $name]
 			);
 		}
 	}

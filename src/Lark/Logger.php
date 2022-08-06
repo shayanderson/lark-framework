@@ -87,28 +87,12 @@ class Logger
 	/**
 	 * Log debug
 	 *
-	 * @param mixed $message
+	 * @param string|null $message
 	 * @param mixed $context
-	 * @param int $backtraceKey
 	 * @return void
 	 */
-	public function debug($message = null, $context = null, int $backtraceKey = 1): void
+	public function debug(?string $message, $context = null): void
 	{
-		if ($message !== null && !is_scalar($message)) // message as context
-		{
-			$context = $message;
-			$message = null;
-		}
-
-		if (!$message)
-		{
-			$bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-			if (isset($bt[$backtraceKey]['class'], $bt[$backtraceKey]['function']))
-			{
-				$message = $bt[$backtraceKey]['class'] . '::' . $bt[$backtraceKey]['function'];
-			}
-		}
-
 		$this->record(self::LEVEL_DEBUG, $message, $context);
 	}
 

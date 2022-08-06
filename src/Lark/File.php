@@ -88,9 +88,9 @@ class File
 	/**
 	 * File contents getter
 	 *
-	 * @return string
+	 * @return mixed
 	 */
-	public function read(): string
+	public function read()
 	{
 		$this->existsOrException();
 		return file_get_contents($this->path());

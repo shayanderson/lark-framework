@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace Lark\Map;
 
 /**
- * Map path helper
+ * Map path
  *
  * @author Shay Anderson
  */

@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 namespace Lark\Database;
 
-use Lark\Config;
+use Lark\Binding;
 use Lark\Database;
 use Lark\Model;
 use MongoDB\Client;
@@ -120,11 +120,24 @@ class Connection
 	/**
 	 * Database collection factory
 	 *
-	 * @param string $name 'connId.db.coll' or 'App\Model\ClassName'
+	 * @param string ...$name "connId.db.coll"
+	 * 		or "App\Model\ClassName"
+	 * 		or "database", "collection"
+	 * 		or "connectionId", "database", "collection"
 	 * @return Database
 	 */
-	public static function factory(string $name): Database
+	public static function factory(string ...$name): Database
 	{
+		// "connId.db.coll" or "db.coll"
+		if (count($name) > 1)
+		{
+			$name = implode('$', $name);
+		}
+		else
+		{
+			$name = $name[0];
+		}
+
 		$model = null;
 
 		// class name
@@ -193,7 +206,7 @@ class Connection
 			return;
 		}
 
-		self::$config = Config::get('db', []);
+		self::$config = Binding::get('db', []);
 
 		// check for db connections in config
 		if (!isset(self::$config['connection']))

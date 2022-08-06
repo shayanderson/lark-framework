@@ -25,7 +25,7 @@ class Session extends \Lark\Factory\Singleton
 	 *
 	 * @var array
 	 */
-	private static array $cookie;
+	private static array $cookie = [];
 
 	/**
 	 * Session state
@@ -136,6 +136,16 @@ class Session extends \Lark\Factory\Singleton
 	}
 
 	/**
+	 * Session ID getter
+	 *
+	 * @return string|null Returns null if no session
+	 */
+	public function id(): ?string
+	{
+		return $this->isSession() ? session_id() : null;
+	}
+
+	/**
 	 * Check if session exists
 	 *
 	 * @return bool
@@ -189,7 +199,8 @@ class Session extends \Lark\Factory\Singleton
 			$this->state = session_start();
 
 			Debugger::internal(__METHOD__, [
-				'session' => $this->state
+				'session' => $this->state,
+				'sessionId' => session_id()
 			]);
 		}
 	}

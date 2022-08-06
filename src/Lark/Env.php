@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace Lark;
 
 /**
- * Environment variables helper
+ * Environment variables
  *
  * @author Shay Anderson
  */

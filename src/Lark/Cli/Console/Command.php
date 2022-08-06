@@ -10,10 +10,11 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Cli\CliException;
+use Lark\Cli;
 use Lark\Cli\Console;
 use Lark\Cli\Output;
 use Lark\Database\Connection;
+use Lark\File;
 
 /**
  * Console commands
@@ -40,7 +41,7 @@ class Command
 		{
 			if (!is_dir($dir))
 			{
-				throw new CliException(ucfirst($dirName) . ' directory not found', [
+				throw new ConsoleException(ucfirst($dirName) . ' directory not found', [
 					'directory' => $dir
 				]);
 			}
@@ -59,6 +60,58 @@ class Command
 	}
 
 	/**
+	 * Initialize project
+	 *
+	 * @return void
+	 */
+	public static function init(): void
+	{
+		$cli = Cli::getInstance();
+		$out = Console::getInstance()->output();
+		$out->echo();
+		$out->echo('Initializing Lark project...');
+		$out->echo();
+
+		// rm extra files
+		foreach ([
+			'./CHANGELOG.md',
+			'./LICENSE.md',
+			'./README.md'
+		] as $fp)
+		{
+			$file = new File($fp);
+
+			if (
+				$file->exists()
+				&& $cli->confirm('Remove file "' . $file->path() . '"?')
+				&& $file->delete()
+			)
+			{
+				$out->ok('  Removed file "' . $file->path() . '"');
+			}
+		}
+
+		// create empty project dirs
+		foreach ([
+			'./app/Middleware',
+			'./app/Model',
+			'./app/schemas',
+			'./revisions'
+		] as $dir)
+		{
+			if (!is_dir($dir) && mkdir($dir))
+			{
+				$out->ok('Created project directory "' . $dir . '"');
+			}
+		}
+
+		$out->echo();
+
+		// exit
+		Cli::getInstance()->exit();
+	}
+
+	/**
 	 * Create model
 	 *
 	 * @param string $inputName
@@ -71,6 +124,7 @@ class Command
 	public function model(
 		string $inputName,
 		?string $inputNameSchema,
+		?string $optSchemaPath = null,
 		?string $optTemplatePath = null,
 		?bool $optUseDefaults = null,
 		?SchemaFile $schemaFile = null
@@ -78,21 +132,33 @@ class Command
 	{
 		$inputName = new InputName($inputName);
 		$className = ModelFile::classNameFromInputName($inputName);
+		$modelFile = new ModelFile($inputName, $inputName->getName() . '.php');
+		$modelFile->fileExistsAbort();
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		// schema
+		if ($inputNameSchema && $optSchemaPath)
+		{
+			throw new ConsoleException(
+				'Cannot use argument "schema-name" and option "schema" together'
+			);
+		}
+
 		if ($inputNameSchema)
 		{
 			$schemaFile = $this->schema($inputNameSchema);
 		}
 
-		$schamaPath = null;
+		$schemaPath = null;
 		if ($schemaFile)
 		{
-			// make relative, rm "app/" dir
-			$schamaPath = '/' . substr($schemaFile->pathRelative(), 4);
-
+			$schemaPath = $schemaFile->pathRelativeSchemaDir();
 			$inputNameSchema = $schemaFile->getInputName();
+		}
+
+		if ($optSchemaPath)
+		{
+			$schemaPath = SchemaFile::formatPathName($optSchemaPath);
 		}
 
 		///////////////////////////////////////////////////////////////////////////////////////
@@ -104,13 +170,23 @@ class Command
 
 			if (!$defaultConnId)
 			{
-				throw new CliException('No database connections found');
+				throw new ConsoleException('No database connections found');
 			}
 
-			$dbString = $defaultConnId . '$app$'
-				. ($inputNameSchema
-					? $inputNameSchema->getName()
-					: strtolower($inputName->getName()));
+			$dbString = $defaultConnId . '$app$';
+
+			if ($inputNameSchema)
+			{
+				$dbString .= $inputNameSchema->getName();
+			}
+			else
+			{
+				$dbString .= strtolower($inputName->getName());
+				if (substr($dbString, -1) !== 's')
+				{
+					$dbString .= 's'; // auto append 's'
+				}
+			}
 
 			if (!$optUseDefaults)
 			{
@@ -127,14 +203,13 @@ class Command
 		///////////////////////////////////////////////////////////////////////////////////////
 		// model
 		$this->output()->echo('Model class: "' . $className . '"');
-		$modelFile = new ModelFile($inputName, $inputName->getName() . '.php');
 
 		if ($modelFile->write(
 			Template::model(
 				$optTemplatePath,
 				$inputName->getName(),
 				ModelFile::namespaceFromInputName($inputName),
-				$schamaPath,
+				$schemaPath,
 				$dbString
 			)
 		))
@@ -176,6 +251,47 @@ class Command
 	}
 
 	/**
+	 * Remove revision command
+	 *
+	 * @param string $revId
+	 * @return void
+	 */
+	public function rmrev(string $revId): void
+	{
+		if (!$this->console->confirm('Remove revision "' . $revId . '"?'))
+		{
+			$this->console->abort();
+		}
+
+		if (RevisionFile::remove($revId))
+		{
+			$this->output()->ok('Removed revision file for "' . $revId . '"');
+		}
+		else
+		{
+			$this->output()->error('Failed to remove revision file for "' . $revId . '"');
+		}
+
+		$rev = RevisionFile::fromRevIdToObject($revId);
+
+		$revModel = new RevisionModel(
+			$rev->getConnectionId(),
+			$rev->getDatabase(),
+			$rev->getCollection(),
+			$revId
+		);
+
+		if ($revModel->delete() > 0)
+		{
+			$this->output()->ok('Removed revision from database "' . $revId . '"');
+		}
+		else
+		{
+			$this->output()->warn('Failed to remove revision from database "' . $revId . '"');
+		}
+	}
+
+	/**
 	 * Create route
 	 *
 	 * @param string $inputName
@@ -188,6 +304,8 @@ class Command
 	public function route(
 		string $inputName,
 		?string $inputNameModel,
+		?string $optModel = null,
+		?string $optSchemaPath = null,
 		?string $optTemplatePath = null,
 		?string $optTemplateModelPath = null,
 		?bool $optUseDefaults = null
@@ -195,6 +313,8 @@ class Command
 	{
 		$inputNameStr = $inputName;
 		$inputName = new InputName($inputName);
+		$routeFile = new RouteFile($inputName, $inputName->getName() . '.php');
+		$routeFile->fileExistsAbort();
 
 		$this->output()->echo('Route name: "' . $inputName->getNamespaceName() . '"');
 		$this->output()->echo();
@@ -217,19 +337,19 @@ class Command
 		///////////////////////////////////////////////////////////////////////////////////////
 		// schema
 		$schemaFile = null;
-		if ($optUseDefaults || $this->console->confirm('Create schema?', true))
+		if (!$optSchemaPath && ($optUseDefaults || $this->console->confirm('Create schema?', true)))
 		{
 			$schemaFile = $this->schema($inputNameStr);
-		}
-		else
-		{
-			$this->output()->echo();
 		}
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		// model
 		$modelClassName = null;
-		if ($optUseDefaults || $this->console->confirm('Create model?', true))
+		if ($optModel)
+		{
+			$modelClassName = ModelFile::classNameFromInputName(new InputName($optModel));
+		}
+		else if ($optUseDefaults || $this->console->confirm('Create model?', true))
 		{
 			if (!$inputNameModel)
 			{
@@ -239,20 +359,15 @@ class Command
 			$modelClassName = $this->model(
 				$inputNameModel,
 				null,
+				$optSchemaPath,
 				$optTemplateModelPath,
 				$optUseDefaults,
 				$schemaFile
 			);
 		}
-		else
-		{
-			$this->output()->echo();
-		}
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		// route file
-		$routeFile = new RouteFile($inputName, $inputName->getName() . '.php');
-
 		if ($routeFile->write(
 			Template::route(
 				$optTemplatePath,
@@ -319,6 +434,7 @@ class Command
 		$this->output()->echo('Schema name: "' . $inputName->getNamespaceName() . '"');
 
 		$schemaFile = SchemaFile::factory($inputName);
+		$schemaFile->fileExistsAbort();
 		$schemaTemplateFile = SchemaTemplateFile::factory($inputName);
 
 		// compile

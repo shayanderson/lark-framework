@@ -43,17 +43,21 @@ class Route
 	public function __construct(string $route, string $routeBase)
 	{
 		$this->route = ltrim($route, '/');
-		if ($this->route)
+
+		if ($this->route !== '*')
 		{
-			$this->route = $routeBase . '/' . $this->route;
-		}
-		else if ($routeBase)
-		{
-			$this->route = $routeBase;
-		}
-		else
-		{
-			$this->route = $route;
+			if ($this->route)
+			{
+				$this->route = $routeBase . '/' . $this->route;
+			}
+			else if ($routeBase)
+			{
+				$this->route = $routeBase;
+			}
+			else
+			{
+				$this->route = $route;
+			}
 		}
 
 		Debugger::internal(__METHOD__ . ' (create route)', [
@@ -81,7 +85,7 @@ class Route
 				'params' => $params
 			]);
 
-			return call_user_func_array($action, $params);
+			return call_user_func_array($action, array_values($params));
 		}
 		// [class, method, params?]
 		else if (is_array($action))
@@ -97,7 +101,7 @@ class Route
 				'params' => $params
 			]);
 
-			return call_user_func_array([new $action[0], $action[1]], $params);
+			return call_user_func_array([new $action[0], $action[1]], array_values($params));
 		}
 		else
 		{
@@ -128,6 +132,11 @@ class Route
 	 */
 	public function match(string $requestPath): bool
 	{
+		if ($this->route === '*')
+		{
+			return true;
+		}
+
 		$isOptionalParam = strpos($this->route, '?') !== false;
 		$p = $this->route;
 

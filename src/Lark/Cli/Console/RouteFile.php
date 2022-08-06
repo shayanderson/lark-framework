@@ -10,8 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Cli\CliException;
-
 /**
  * Console route file
  *
@@ -68,7 +66,7 @@ class RouteFile extends File
 	{
 		if (isset(self::getRouteLoader()[$baseRoute]))
 		{
-			throw new CliException('Base route "' . $baseRoute . '" already exists in routes'
+			throw new ConsoleException('Base route "' . $baseRoute . '" already exists in routes'
 				. ' load file and cannot be appended ("' . self::getRouteLoaderPath() . '")');
 		}
 	}

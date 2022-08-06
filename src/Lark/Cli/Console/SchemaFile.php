@@ -37,4 +37,32 @@ class SchemaFile extends File
 	{
 		return new self($inputName, $inputName->getName() . '.php');
 	}
+
+	/**
+	 * Format input path name, add file extension if needed
+	 *
+	 * @param string $pathName
+	 * @return string
+	 */
+	public static function formatPathName(string $pathName): string
+	{
+		$pathName = trim($pathName);
+
+		if (substr($pathName, -4) !== '.php')
+		{
+			$pathName .= '.php';
+		}
+
+		return $pathName;
+	}
+
+	/**
+	 * Relative path for schema directory file
+	 *
+	 * @return string
+	 */
+	public function pathRelativeSchemaDir(): string
+	{
+		return self::absolutePathToRelative($this->path(), DIR_SCHEMAS);
+	}
 }

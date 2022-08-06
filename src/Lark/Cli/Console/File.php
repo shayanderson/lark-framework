@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Cli\CliException;
 use Lark\Cli\Console;
 
 /**
@@ -81,7 +80,7 @@ abstract class File extends \Lark\File
 	{
 		if (!static::TYPE)
 		{
-			throw new CliException('Invalid type (empty)');
+			throw new ConsoleException('Invalid type (empty)');
 		}
 
 		return Console::getDir(static::TYPE) . $name->getSubdir();
@@ -152,7 +151,7 @@ abstract class File extends \Lark\File
 		{
 			if (!mkdir($this->dir, 0775, true))
 			{
-				throw new CliException('Failed to create directory "' . $this->dir . '"');
+				throw new ConsoleException('Failed to create directory "' . $this->dir . '"');
 			}
 		}
 
@@ -160,7 +159,7 @@ abstract class File extends \Lark\File
 
 		if (!$status)
 		{
-			throw new CliException('Failed to write "' . $this->inputName->getNamespaceName()
+			throw new ConsoleException('Failed to write "' . $this->inputName->getNamespaceName()
 				. '" file "' . $this->path() . '"');
 		}
 

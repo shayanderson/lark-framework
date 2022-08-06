@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Cli\CliException;
 use Lark\Database;
 use Lark\Database\Connection;
 use Lark\Schema;
@@ -35,7 +34,7 @@ class RevisionModel extends \Lark\Model
 	const FIELD_COLL = 'coll';
 	const FIELD_STATUS = 'status';
 	const FIELD_DT = 'dt';
-	const FIELD_TS = 'ts';
+	const FIELD_CREATED = 'created';
 
 	/**
 	 * Statuses
@@ -106,6 +105,16 @@ class RevisionModel extends \Lark\Model
 		}
 
 		return true;
+	}
+
+	/**
+	 * Delete revision
+	 *
+	 * @return integer (aff)
+	 */
+	public function delete(): int
+	{
+		return $this->getRevDb()->deleteOne([self::FIELD_REV_ID => $this->revId]);
 	}
 
 	/**
@@ -188,7 +197,7 @@ class RevisionModel extends \Lark\Model
 			return (int)$m[0];
 		}
 
-		throw new CliException('Failed to parse DT from revId "' . $revId . '"');
+		throw new ConsoleException('Failed to parse DT from revId "' . $revId . '"');
 	}
 
 	/**
@@ -201,9 +210,12 @@ class RevisionModel extends \Lark\Model
 		return new Schema([
 			// indexes
 			'$indexes' => [
-				[self::FIELD_REV_ID => 1, '$name' => 'idx_revId', '$unique' => true],
-				[self::FIELD_COLL => 1, '$name' => 'idx_coll'],
-				[self::FIELD_DT => 1, '$name' => 'idx_dt', '$unique' => true]
+				[self::FIELD_REV_ID => 1, '$name' => 'idxRevId', '$unique' => true],
+				[self::FIELD_DT => 1, '$name' => 'idxDt'],
+				[
+					self::FIELD_DT => 1, self::FIELD_COLL => 1, '$name' => 'idxDtColl',
+					'$unique' => true
+				],
 			],
 			// fields
 			self::FIELD_ID => ['string', 'id'],
@@ -215,7 +227,7 @@ class RevisionModel extends \Lark\Model
 				['default' => self::STATUS_PENDING]
 			],
 			self::FIELD_DT => ['int', 'notEmpty'],
-			self::FIELD_TS => ['timestamp', 'notNull', ['default' => time()]]
+			self::FIELD_CREATED => ['dbdatetime', 'notNull', ['default' => db_datetime()]]
 		]);
 	}
 

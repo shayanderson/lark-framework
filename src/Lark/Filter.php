@@ -107,12 +107,9 @@ class Filter extends Factory\Singleton
 	 * @param array $options
 	 * @return string
 	 */
-	public function string(
-		$value,
-		array $options = ['flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH]
-	): string
+	public function string($value, array $options = []): string
 	{
-		return $this->filter($value, FILTER_SANITIZE_STRING, $options);
+		return $this->filter($value, FILTER_SANITIZE_FULL_SPECIAL_CHARS, $options);
 	}
 
 	/**

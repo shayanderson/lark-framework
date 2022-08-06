@@ -29,9 +29,9 @@ class Record
 	/**
 	 * Context
 	 *
-	 * @var array|null
+	 * @var mixed
 	 */
-	public ?array $context;
+	public $context;
 
 	/**
 	 * Logger level
@@ -70,7 +70,13 @@ class Record
 	 * @param mixed $context
 	 * @param string $channel
 	 */
-	public function __construct(int $level, string $levelName, ?string $message, $context, string $channel)
+	public function __construct(
+		int $level,
+		string $levelName,
+		?string $message,
+		$context,
+		string $channel
+	)
 	{
 		if (!$message && !$context && !$channel)
 		{

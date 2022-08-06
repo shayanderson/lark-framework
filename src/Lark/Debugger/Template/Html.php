@@ -26,7 +26,7 @@ class Html extends AbstractTemplate
 	 * @var string
 	 */
 	private static $styleCodeBlue = 'background-color:#00204d; padding:10px 14px; color:#fff;'
-		. ' border-radius:4px;';
+		. ' border-radius:4px; overflow:auto;';
 
 	/**
 	 * Style code block gray
@@ -34,7 +34,7 @@ class Html extends AbstractTemplate
 	 * @var string
 	 */
 	private static $styleCodeGray = 'background-color:#222; padding:10px 14px; color:#fff;'
-		. ' border-radius:4px;';
+		. ' border-radius:4px; overflow:auto;';
 
 	/**
 	 * @inheritDoc

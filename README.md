@@ -10,18 +10,23 @@ Lark is a modern, lightweight app framework designed specifically for developing
   - [Middleware](#middleware)
 - [Logging](#logging)
 - [Exception Handling](#exception-handling)
-- [Configuration](#configuration)
+- [Debugger](#debugger)
+- [Configuration & Bindings](#configuration--bindings)
 - [Environment Configuration](#environment-configuration)
 - [Request](#request)
 - [Response](#response)
-- [Model](#model)
 - [Database](#database)
+- [Schema](#schema)
+- [Model](#model)
 - [Validator](#validator)
   - [Validation Types & Rules](#validation-types--rules)
 - [Filter](#filter)
 - [HTTP Client](#http-client)
 - [CLI](#cli)
+- [File](#file)
+- [Timer](#timer)
 - [Helpers](#helpers)
+  - [`app()`](#helper-app), [`db()`](#helper-db), [`db_datetime()`](#helper-db_datetime), [`debug()`](#helper-debug), [`env()`](#helper-env), [`f()`](#helper-f), [`halt()`](#helper-halt), [`logger()`](#helper-logger), [`p()`](#helper-p), [`pa()`](#helper-pa), [`req()`](#helper-req), [`res()`](#helper-res), [`router()`](#helper-router), [`x()`](#helper-x)
 
 ## Installation
 
@@ -72,8 +77,14 @@ router()->put('/route', function(){});
 
 // route for ALL HTTP methods
 router()->all('/route', function(){});
+
 // route for multiple HTTP methods
 router()->route(['GET', 'POST'], '/route', function(){});
+
+// a wildcard route "*" can be used to match any route
+router()->get('*', function(){}); // all HTTP GET methods
+router()->all('*', function(){}); // all HTTP methods (all requests)
+router()->route(['GET', 'POST'], '*', function(){}); // all HTTP GET and POST methods
 ```
 
 #### Regular Expression Routes
@@ -128,14 +139,38 @@ router()
 	->get('/', function(){});
 ```
 
+#### Route Controller
+A route controller object can be used with [Route Groups](#route-groups) or [Route Group Loading](#route-group-loading).
+```php
+class MyController implements Lark\Router\RouteControllerInterface
+{
+	public function bind(Router $router): void
+	{
+		$router->get('/users', function(){}); // "/api/users"
+	}
+}
+
+// in routes file
+router()
+	->group('/api')
+	->controller(new MyController);
+```
+
 ### Route Actions
 
 Route actions are executed when a route is matched. Route actions can be a callable function (`Closure`) or array with `[class, method]`. The first route matched is the only route action that will be executed.
 
 ```php
 // function will be called on route match
-router()->get('/example1', function(){
-	return 'hello'; // return string to output as html/
+router()->get('/example-html', function(): string {
+	return 'hello'; // return string to output as html
+});
+
+router()->get('/example-json', function(): array {
+    return ['message' => 'hello']; // return array|stdClass to output as JSON
+    // will auto add header "Content-Type: application/json"
+    // and response body will be:
+    // {"message": "hello"}
 });
 
 // class method "App\Controller\ExampleController::hello()" will be called on route match
@@ -244,7 +279,7 @@ router()->after(function(){}, [MyClass::class, 'myMethod']);
 
 ## Logging
 
-`Lark\Logger` is a logging helper. The helper function [`logger()`](#helper-logger) is available.
+`Lark\Logger` is used for logging. The helper function [`logger()`](#helper-logger) is available.
 
 ```php
 logger('channel')->critical('message', [context]);
@@ -324,7 +359,7 @@ class ExceptionHandler
 			// ...
 
 			// respond with error
-			app()->response()
+			res()
 				->code($code)
 				->json($info);
 
@@ -335,9 +370,41 @@ class ExceptionHandler
 }
 ```
 
-## Configuration
+## Debugger
+`Lark\Debugger` can be used for debugging. The helper functions [`debug()`](#helper-debug) and [`x()`](#helper-x) are available.
 
-Framework configuration and mapping can be set with the `use()` method.
+```php
+use Lark\Debugger;
+
+// append debugger info
+Debugger::append(['some' => 'info'])
+	->name('Test info') // this will be displayed as title (optional)
+	->group('test'); // this will group info together (optional)
+
+Debugger::append(['more' => 'info'])
+	->name('More test info')
+	->group('test');
+
+Debugger::dump(); // dump all debugger info and exit
+// or use:
+// x(); // dump all debugger info and exit
+```
+
+## Configuration & Bindings
+
+Framework configuration and bindings can be set with the `use()` method.
+
+### Debugging
+
+Enable Lark internal append debugger info for debugger dump.
+```php
+app()->use('debug.dump', true);
+```
+
+Enable Lark internal debug logging.
+```php
+app()->use('debug.log', true);
+```
 
 ### Database Connections
 
@@ -348,13 +415,13 @@ Database connections are registered using the syntax `db.connection.[connectionI
 // the first registered connection is always the default connection
 // regardless of connectionId
 app()->use('db.connection.default', [
-	'hosts' => ['127.0.0.1'],
-	'username' => 'test',
-	'password' => 'secret',
-	// 'replicaSet' => 'rsNameHere' (optional)
-    // options that override global database options
-    // (optional, see database global options below)
-    // 'options' => []
+    'hosts' => ['127.0.0.1'],
+    'username' => 'test',
+    'password' => 'secret',
+    'replicaSet' => 'rsNameHere', // (optional)
+    // options can override any global database options
+    // (optional, see "Database Global Options" below)
+    'options' => []
 ]);
 
 // register second connection with connectionId "myconn"
@@ -363,24 +430,38 @@ app()->use('db.connection.myconn', [...]);
 // ...
 
 // use default connection (no connectionId required):
-$db = app()->db('dbName$collectionName');
+$db = db('dbName$collectionName');
+// or: $db = db('dbName', 'collectionName');
 
 // use non-default connection (connectionId required):
-$db2 = app()->db('myConn2$dbName$collectionName');
+$db2 = db('myconn$dbName$collectionName');
+// or: $db = db('myConn2', 'dbName', 'collectionName');
 ```
+> Read more in [Database](#database) and helper function [`db()`](#helper-db)
 
 ### Database Global Options
 
-Database global options can be set using `db.options`.
+Database global options can be set using `db.options`. All default option values are listed below.
 
 ```php
-app()->use('db.options', [
-	'db.allow' => [], // allow access to only specific databases
-	'db.deny' => ['admin', 'config', 'local'], // restrict access to databases
-	'debug.log' => false, // add debug level database messages to logger
-	'find.limit' => 10_000 // find "limit" for find options
+use MongoDB\Driver\WriteConcern;
 
+app()->use('db.options', [
+    'db.allow' => [], // allow access to only specific databases
+    'db.deny' => ['admin', 'config', 'local'], // restrict access to databases
+    'debug.dump' => false, // will include all database calls/context in debugger dumper
+    'debug.log' => false, // add debug level database messages to logger
+    'find.limit' => 10_000, // find "limit" for find options
+    'write.concern' => new WriteConcern(WriteConcern::MAJORITY) // MongoDB write concern
 ]);
+```
+> Read more about Write Concern in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/write-concern/) and in the [PHP docs](https://www.php.net/manual/en/class.mongodb-driver-writeconcern.php)
+
+### Database Sessions
+
+Sessions can be stored in the database using a `Lark\Model` object.
+```php
+app()->use('db.session', new App\Model\Session);
 ```
 
 ### Validator Custom Rules
@@ -393,7 +474,7 @@ app()->use('validator.rule.string.beginWithEndWith', App\Validator\BeginWithEndW
 
 ## Environment Configuration
 
-`Lark\Env` is an app environment configuration helper. The helper function [`env()`](#helper-env) is available.
+`Lark\Env` is for app environment configuration. The helper function [`env()`](#helper-env) is available.
 
 Example `.env` file.
 
@@ -424,30 +505,42 @@ Other `Lark\Env` methods: `fromArray(array $array)`, `has(string $key): bool` an
 
 ## Request
 
-`Lark\Request` is an HTTP request helper with input sanitizing.
-
-`POST` request ( `Content-Type: application/json` ) with JSON body like `{"name": "Shay", "contact": {"email": "example@example.com"}}` example.
+`Lark\Request` provides HTTP request data with input sanitizing. The helper function [`req()`](#helper-req) is available.
 
 ```php
-$data = app()->request()->json(); // get all as object (no auto sanitizing)
+// example request:
+// POST /example
+// Content-Type: application/json
+// {"name": "Test", "contact": {"email": "test@example.com"}}
+$data = req()->json(); // get all as object/array (no auto sanitizing)
 
-// or get individual fields
-$name = app()->request()->json('name')->string();
-if(app()->request()->json('contact.email')->has())
+// request JSON must be an array or 400 response is sent
+$data = req()->jsonArray();
+// request JSON must be an object or 400 response is sent
+$data = req()->jsonObject();
+```
+>  If HTTP header `Content-Type: application/json` does not exist for any JSON methods, an automatic response with HTTP status code `400` and JSON body `{"message": "Invalid JSON: [reason]"}` will be sent.
+
+Individual JSON fields can also be accessed with sanitizing.
+
+```php
+// get individual field
+$name = req()->jsonField('name')->string();
+if(req()->jsonField('contact.email')->has())
 {
-	$email = app()->request()->json('contact.email')->email();
+	$email = req()->jsonField('contact.email')->email();
 }
 ```
 
 `POST` request ( `Content-Type: application/x-www-form-urlencoded` ) example.
 
 ```php
-if(app()->request()->isMethod('POST'))
+if(req()->isMethod('POST'))
 {
-	$name = app()->request()->input('name')->string();
-	if(app()->request()->input('email')->has())
+	$name = req()->input('name')->string();
+	if(req()->input('email')->has())
 	{
-		$email = app()->request()->input('email')->email();
+		$email = req()->input('email')->email();
 	}
 }
 ```
@@ -457,26 +550,24 @@ if(app()->request()->isMethod('POST'))
 ```php
 // request "/?id=5&name=Shay"
 print_r([
-	'id' => app()->request()->query('id')->integer(),
+	'id' => req()->query('id')->integer(),
 	// use "default" as value if query "name" does not exist
-	'name' => app()->request()->query('name', 'default')->string()
+	'name' => req()->query('name', 'default')->string()
 ]); // Array ( [id] => 5 [name] => Shay )
 ```
-
-> Filter options and [flags](https://www.php.net/manual/en/filter.filters.flags.php) can be used with filter methods: `app()->request()->input('name')->string(['flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK])`
 
 Request cookie example.
 
 ```php
-if(app()->request()->cookie('myCookie')->has())
+if(req()->cookie('myCookie')->has())
 {
-	var_dump( app()->request()->cookie('myCookie')->string() );
+	var_dump( req()->cookie('myCookie')->string() );
 }
 ```
 
 ### Request Session
 
-`Lark\Request\Session` is a session helper.
+`Lark\Request\Session` is used to manage sessions.
 
 ```php
 app()->session->set('user.id', 5); // creates session data: [user => [id => 5]]
@@ -486,6 +577,7 @@ if(app()->session->has('user.id'))
 	$userId = app()->session->get('user.id');
 }
 ```
+> Sessions can be stored in the database by using `Lark\Database\Session::handler()`
 
 `Lark\Request\SessionFlash` can be used to store short-term data where the data is available from when set through the following request, example:
 
@@ -510,7 +602,10 @@ echo app()->session()->flash()->get('userError');
 - `isContentType(string $contentType): bool` - validate request content-type
 - `isMethod(string $method): bool` - validate request method
 - `isSecure(): bool` - check if request is secure (HTTPS)
-- `json(string $field = null, $default = null)` - JSON request body helper
+- `json()` - JSON request body getter
+- `jsonArray(): array` - JSON request body getter, must be array or `400` HTTP status code response
+- `jsonField(string $field, $default = null): Lark\Request\Json` - JSON request field object getter
+- `jsonObject(): array` - JSON request body getter, must be object or `400` HTTP status code response
 - `method(): string` - request method getter
 - `path(): string` - path getter, like `/the/path`
 - `pathWithQueryString(): string` - path with query string getter, like `/the/path?x=1`
@@ -542,17 +637,18 @@ Session methods `clear()`, `get()`, `has()` and `set()` all use dot notation for
 - `destroy()` - destroy a session
 - `get(string $key)` - value getter
 - `has(string $key): bool` - check if key exists
+- `id(): ?string` - session ID getter
 - `isSession(): bool` - check if session exists
 - `set(string $key, $value)` - key/value setter
 - `toArray(): array` - session array getter
 
 ## Response
 
-`Lark\Response` is an HTTP response helper.
+`Lark\Response` is used to control the HTTP response.
 
 ```php
 // set header, status code 200, content-type and send JSON response
-app()->response()
+res()
 	->header('X-Test', 'value')
 	->code(Lark\Response::HTTP_OK)
 	->contentType('application/json') // not required when using json()
@@ -575,69 +671,9 @@ app()->response()
 - `code(int $code): Lark\Response` - response status code setter
 
 
-## Model
-
-`Lark\Model` is a model, entity and validation helper.
-
-```php
-namespace App\Model;
-class User extends \App\Model
-{
-	public static function schema(): array
-	{
-		return [
-			'name' => ['string', 'notEmpty'],
-			'age' => ['int', 'notEmpty'],
-			'isAdmin' => ['bool', 'required', ['default' => false]]
-		];
-	}
-}
-```
-
-The `App\Model\User` class can be used to simplify validation and creating an entity.
-
-```php
-$user = (new App\Model\User)->make([
-	'name' => 'Bob',
-	'age' => 25
-]);
-var_dump($user);
-// array(3) { ["name"]=> string(3) "Bob" ["age"]=> int(25) ["isAdmin"]=> bool(false) }
-
-// or an array can be used
-$user = (new App\Model\User)->makeArray([
-	['name' => 'Bob', 'age' => 25],
-	['name' => 'Jane', 'age' => 21]
-]);
-```
-
-The `ENTITY_FLAG_PARTIAL` flag can be set to allow missing fields that can be used for partial updates.
-
-```php
-$user = (new App\Model\User)->make([
-	'name' => 'Bob'
-], ENTITY_FLAG_PARTIAL);
-var_dump($user); // array(1) { ["name"]=> string(3) "Bob" }
-```
-
-The `ENTITY_FLAG_ID` flag can be set to require any field using the `id` rule.
-
-```php
-// schema: ['id' => ['string', 'id'], 'name' => ['string', notEmpty]]
-$user = (new App\Model\User)->make([
-	'name' => 'Bob'
-], ENTITY_FLAG_ID);
-// throws Lark\Validator\ValidatorException:
-// Validation failed: "id" must be a string
-```
-
-> Multiple entity flags can be set like: `ENTITY_FLAG_ID | ENTITY_FLAG_PARTIAL`
-
-
-
 # Database
 
-`Lark\Database` is a MongoDB database and collection helper.
+`Lark\Database` is used to access MongoDB database and collection instances. The helper function [`db()`](#helper-db) is available.
 
 ```php
 // bootstrap
@@ -650,9 +686,7 @@ app()->use('db.connection.myconn', [...]);
 // ...
 
 // get Database object instance
-// syntax for default connection: "[database]$[collection]"
-// syntax for other than default: "[connectionId]$[database]$[collection]"
-$db = app()->db('myDb$users');
+$db = db('myDb$users');
 ```
 
 #### Insert Documents
@@ -775,7 +809,7 @@ $affected = $db->collectionField('tags')->rename('tagsNew');
 > Use dot notation for nested field names like `field1.field2`
 
 ### Database Methods
-- `collectionField(string $field): Database\Field` - field helper
+- `collectionField(string $field): Database\Field` - collection field object getter
 - `count(array $filter = [], array $options = []): int` - count documents matching filter
 - `delete(array $filter, array $options = []): int` - delete documents matching filter
 - `deleteAll(array $options = []): int` - delete all documents
@@ -808,14 +842,115 @@ $affected = $db->collectionField('tags')->rename('tagsNew');
 - `push(array $filter, $value, $unique = true): int` - append value to field array, if `$unique` will only append value if doesn't already exist in field array
 - `rename(string $newName): int` - rename field
 
+## Schema
+`Lark\Schema` is used to create schemas for creating entities, entity validation and database collection creation.
+```php
+use Lark\Schema;
+$schema = new Schema([
+    // create an index when creating a database collection
+    '$index' => [
+        'name' => 1, 'age' => 1, '$name' => 'idxNameAge'
+    ],
+    // or create multiple indexes
+    // '$indexes' => [
+    //	['username' => 1, '$name' => 'idxUsername', '$unique' => true],
+    //	['name' => 1, 'age' => 1, '$name' => 'idxNameAge']
+    // ],
+    'name' => ['string', 'notEmpty'],
+    'username' => ['string', 'notEmpty'],
+    'age' => ['int', 'notEmpty']
+]);
+```
+Schema uses [Validation Types & Rules](#validation-types--rules) for field definitions.
+> Options for in `$index` and `$indexes` are any field starting with `$`, like `$unique`, and more options can be found in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/method/db.collection.createIndex/#options)
+
+## Model
+`Lark\Model` is a model: a way to simplify database calls and creating/validating entities.
+
+```php
+namespace App\Model;
+use App\Model;
+use Lark\Schema;
+
+class User extends Model
+{
+	const DBS = 'default$app$users';
+	public static function schema(): Schema
+	{
+		return new Schema([
+			'name' => ['string', 'notEmpty'],
+			'age' => ['int', 'notEmpty'],
+			'isAdmin' => ['bool', 'notNull', ['default' => false]]
+		]);
+	}
+}
+```
+The `App\Model\User` class can be used for creating an entity and validation.
+
+```php
+$user = (new App\Model\User)->make([
+	'name' => 'Bob',
+	'age' => 25
+]);
+var_dump($user);
+// array(3) { ["name"]=> string(3) "Bob" ["age"]=> int(25) ["isAdmin"]=> bool(false) }
+
+// or an array can be used
+$user = (new App\Model\User)->makeArray([
+	['name' => 'Bob', 'age' => 25],
+	['name' => 'Jane', 'age' => 21]
+]);
+```
+
+The `$requireId` argument can be set to `true` to require any field using the `id` rule.
+
+```php
+// schema: ['id' => ['string', 'id'], 'name' => ['string', 'notEmpty']]
+$user = (new App\Model\User)->make([
+	'name' => 'Bob'
+], /* $requireId */ true);
+// throws Lark\Validator\ValidatorException:
+// Validation failed: "User.id" must be a string
+```
+
+The `$partial` argument can be set to `true` to allow missing fields that can be used for partial documents.
+
+```php
+$user = (new App\Model\User)->make([
+	'name' => 'Bob'
+], /* $requireId */ false, /* $partial */ true);
+var_dump($user); // array(1) { ["name"]=> string(3) "Bob" }
+```
+> The `$requireId` and `$partial` arguments can be used together to require IDs and allow partial documents
+
+The `Model::db()` method can be used to access the Model database collection (`Model::DBS` must be set).
+```php
+// ...
+class Model extends Model
+{
+    const DBS = 'default$app$users';
+    public function get(string $id): ?array
+    {
+        return $this->db()->findId($id);
+    }
+}
+
+// get user document
+$user = (new App\Model\User)->get('62ba4fd034faaf6fc132ef55');
+
+// external calls: get documents
+$docs = (new \App\Model\User)->db()->find(['role' => 'admin']);
+```
+> Important: Model classes shouldn't have any required parameters in their `Model::__construct()` method, because the Models are automatically instantiated when using model/database binding, and any required parameters will not be present
+
 ## Validator
 
-`Lark\Validator` is a validation helper.
+`Lark\Validator` is used for validation and making entities.
 
 ```php
 use Lark\Validator;
 
-$isValid = new Validator([
+$isValid = (new Validator([
 	// data
 	'name' => 'Bob',
 	'age' => 25
@@ -823,21 +958,34 @@ $isValid = new Validator([
 	// schema
 	'name' => ['string', 'notEmpty'],
 	'age' => ['int', 'notNull'],
-	'phone' => null, // no type (generic), optional
+	'phone' => null, // no type (any type allowed), optional
 	'title' => 'string' // string, optional
-])->validate(); // true
+]))->validate(); // true
 ```
 
 Assertion can be used during validation.
 
 ```php
-new Validator([
+(new Validator([
 	'name' => null
 ], [
 	'name' => ['string', 'notNull']
-])->assert();
+]))->assert();
 // throws Lark\Validator\ValidatorException:
 // Validation failed: "name" must be a string
+```
+
+Make entities with validation.
+
+```php
+// validation will pass because no field is required
+var_dump(
+	(new Validator([], [
+		'name' => ['string'],
+		'age' => ['int']
+	]))->make()
+);
+// array(2) { ["name"]=> NULL ["age"]=> NULL }
 ```
 
 ### Validation Types & Rules
@@ -845,7 +993,7 @@ new Validator([
 Rules `notNull` and `notEmpty`, and sometimes `id`, are rules for all types that do not allow the value to be `null`.
 The rule `voidable` can be used for any fields that can be missing.
 
-- `generic` (no type, default) - any type allowed
+- any type (default) - any type allowed
   - `notNull` - value cannot be `null`
 - `array` (or `arr`) - value can be `array` or `null`
   - `allowed` - array values must be allowed `[allowed => [...]]`
@@ -857,6 +1005,10 @@ The rule `voidable` can be used for any fields that can be missing.
   - `unique` - array values must be unique
 - `boolean` (or `bool`) - must be `boolean` or `null`
   - `notNull` - must be `boolean`
+- `datetime` - must be an instance of `DateTime` or `null`
+	- `notNull` - must be instance of `DateTime`
+- `dbdatetime` - must be an instance of `MongoDB\BSON\UTCDateTime` or `null`
+	- `notNull` - must be instance of `MongoDB\BSON\UTCDateTime`
 - `float` - must be a `float` or `null`
   - `between` - must be between both values `[between => [x, y]]`
   - `max` - must be a maximum value of `[max => x]`
@@ -911,7 +1063,7 @@ The rule `voidable` can be used for any fields that can be missing.
 Nested fields can be defined using the `fields` property.
 
 ```php
-$isValid = new Validator([
+$isValid = (new Validator([
 	// data
 	'name' => 'Bob',
 	'contact' => [
@@ -926,18 +1078,22 @@ $isValid = new Validator([
 	'name' => ['string', 'notEmpty'],
 	'contact' => [
 		'array',
-		'fields' => [
-			'email' => ['string', 'email'],
-			'phone' => [
-				'array',
-				'fields' => [
-					'cell' => 'string',
-					'office' => 'string'
+		[
+			'fields' => [
+				'email' => ['string', 'email'],
+				'phone' => [
+					'array',
+					[
+						'fields' => [
+							'cell' => 'string',
+							'office' => 'string'
+						]
+					]
 				]
 			]
 		]
 	]
-])->validate(); // true
+]))->validate(); // true
 ```
 
 ### Assert Callback
@@ -945,11 +1101,11 @@ $isValid = new Validator([
 A callback can be used with the `assert()` method.
 
 ```php
-new Validator([
+(new Validator([
 	'name' => null
 ], [
-	'name' => ['string', 'required']
-])->assert(function(string $field, string $message, string $name = null){
+	'name' => ['string', 'notNull']
+]))->assert(function(string $field, string $message, string $name = null){
 	// handle error
 	//...
 
@@ -992,11 +1148,11 @@ class BeginWithEndWith extends \Lark\Validator\Rule
 }
 
 // validation example
-new Validator([
+(new Validator([
 	'alias' => '123testXYZ'
 ], [
 	'alias' => ['string', ['beginWithEndWith' => ['123', 'XYZ']]]
-])->validate(); // true
+]))->validate(); // true
 ```
 
 It is also possible to override existing rules.
@@ -1019,18 +1175,18 @@ class Email extends \Lark\Validator\TypeString\Email
 }
 
 // validation example
-new Validator([
+(new Validator([
 	'email' => 'test@example.com'
 ], [
 	'email' => ['string', 'email']
-])->validate(); // true
+]))->validate(); // true
 ```
 
 
 
 ## Filter
 
-`Lark\Filter` is a filter helper.
+`Lark\Filter` is used for filtering values.
 
 ```php
 $cleanStr = filter()->string($str);
@@ -1065,7 +1221,7 @@ print_r(
 
 ## HTTP Client
 
-`Lark\Http\Client` is a HTTP client helper.
+`Lark\Http\Client` is an HTTP client.
 
 ```php
 use Lark\Http\Client;
@@ -1155,13 +1311,13 @@ $client = new Client([
 - `port` - set a custom port number
 - `proxy` - use an HTTP proxy
 - `redirects` - allow redirects
-- `timeout` - timeout in seconds for connection and exection
+- `timeout` - timeout in seconds for connection and execution
 - `url` - base URL for request methods
 - `verify` - verify peer's certificate and common name
 
 
 ## CLI
-`Lark\Cli` is a CLI helper.
+`Lark\Cli` is used to create CLI apps.
 ```php
 // bootstrap
 // ...
@@ -1209,7 +1365,7 @@ $cli->command('files', 'Print files in directory')
 // string(8) "/my/file"
 // bool(true)
 ```
-The CLI `Output` class is an output and style helper.
+The CLI `Lark\Cli\Output` class is used for output and styling output.
 ```php
 $o = $cli->output();
 
@@ -1218,28 +1374,28 @@ $o->colorGreen->echo('This is green text');
 // use multiple styles
 $o->colorBlue->styleUnderline->echo('More text');
 
-// style helper methods for common styles
+// style methods for common styles
 $o->error('Error'); // red background
 $o->info('Info'); // blue text
 $o->ok('Success'); // green text
 $o->warn('Warning'); // yellow text
 $o->dim('Muted'); // dim text
 
-// custom style helper methods can be registered
+// custom style methods can be registered
 $o::register('blink', function ($text, $end = PHP_EOL) use ($out) {
 	$out->styleBlink;
 	$out->echo($text, $end);
 });
 $o->bink('Blinking text'); // blinking text
 
-// override existing style helper methods
+// override existing style methods
 $o::register('error', function ($text, $end = PHP_EOL) use ($out) {
 	$out->colorRed; // text color red (instead of bg red)
 	$out->stderr($text, $end); // send to stderr
 });
 $o->error('Oops'); // red text
 ```
-The output `grid()` method is a grid helper that will evenly space columns.
+The output `grid()` method can be used to evenly space columns.
 ```php
 $data = [
 	[1, "one"],
@@ -1257,14 +1413,14 @@ Above example would output:
   100    one hundred
   3      three
 ```
-Helper for `confirm()`.
+Use `confirm()` for prompting.
 ```php
 // "Continue? (y/N)"
 if($cli->confirm("Continue?")) // ...
 // or yes by default: "Continue? (Y/n)"
 if($cli->confirm("Continue?", true)) // ...
 ```
-Helper for `input()`.
+Use `input()` for input.
 ```php
 // "Enter value [DEFAULT]:"
 $val = $cli->input("Enter value:", "DEFAULT");
@@ -1272,14 +1428,15 @@ $val = $cli->input("Enter value:", "DEFAULT");
 ```
 
 ### CLI Methods
+- `abort($status = 0)` - display command aborted message and exit app
 - `command(string $name, string $description, array $aliases = []): Command` - register a command
-- `confirm(string $question, bool $isDefaultYes = false)` - confirm yes/no helper
+- `confirm(string $question, bool $isDefaultYes = false)` - confirm yes/no
 - `exit($status = 0)` - exit app
 - `header(callable $callback)` - register a header callback used int `help()` method
 - `help()` - display help (auto invoked by `Cli`)
-- `input(string $text, $default = null)` - input helper
+- `input(string $text, $default = null)` - input
 - `option(string $option, string $description, callable $action)` - set global option
-- `output()` - CLI `Output` helper object getter
+- `output()` - CLI `Output` object getter
 - `run()` - run CLI app
 
 ### CLI Command Methods
@@ -1335,7 +1492,7 @@ $val = $cli->input("Enter value:", "DEFAULT");
 
 ### CLI Output Methods
 - `dim(string $text, string $end = PHP_EOL): Output` - print dim style text
-- `echo(string $text = '', string $end = PHP_EOL): Output` - Print text to stdout
+- `echo(string $text = '', string $end = PHP_EOL): Output` - Print text to *stdout*
 - `error(string $text, string $end = PHP_EOL): Output` - print error text
 - `grid(array $data, array $options = []): Output` - print grid
 	- Options:
@@ -1345,10 +1502,70 @@ $val = $cli->input("Enter value:", "DEFAULT");
 - `info(string $text, string $end = PHP_EOL): Output` - print info text
 - `ok(string $text, string $end = PHP_EOL): Output` - print success text
 - `warn(string $text, string $end = PHP_EOL): Output` - print warning text
-- `static register(string $name, callable $callback) ` - register style helper method
+- `static register(string $name, callable $callback) ` - register style method
 - `stderr(string $text, string $end = PHP_EOL): Output` - output to *stderr*
 - `stdout(string $text = '', string $end = PHP_EOL): Output` - output to *stdout*
 - `styleIndent(int $number): Output` - indent style
+
+## File
+`Lark\File` is used to handle files.
+
+```php
+use Lark\File;
+
+$file = new File('./my-file.txt');
+if($file->write('contents'))
+{
+	// ...
+}
+
+$contents = $file->read();
+```
+`Lark\Json\File` is used for JSON files.
+
+```php
+use Lark\Exception as LarkException;
+use Lark\Json\File as JsonFile;
+
+$file = new JsonFile('./my-file.json');
+$file->write(['name' => 'test']);
+
+try
+{
+	$value = $file->read();
+}
+catch(LarkException $ex)
+{
+	// exception is throw on JSON decode error
+	echo 'Failed to decode JSON file: ' . $ex->getMessage();
+}
+```
+### File Methods
+- `delete(): bool` - delete a file
+- `exists(): bool` - check if file exists
+- `existsOrException()` - if file does not exist throw exception
+- `path(): string` - file path getter
+- `read()` - read file contents
+- `write($data, $append = false, $lock = true): bool` - write file contents
+
+## Timer
+`Lark\Timer` works as a timer.
+```php
+$timer = new Lark\Timer;
+
+usleep(500000);
+echo $timer->elapsed(); // 0.5001s
+
+sleep(1);
+echo $timer->elapsed(); // 1.5014s
+
+sleep(2);
+// get elapsed since last Timer::elapsed()
+// or Timer::elapsedSinceLast() was invoked
+echo $timer->elapsedSinceLast(); // 2.0003s
+
+echo $timer->elapsed(); // 3.5018s
+```
 
 ## Helpers
 Helpers are global helper functions.
@@ -1356,8 +1573,62 @@ Helpers are global helper functions.
 ### Helper `app()`
 Access the main `App` instance using the `app()` function.
 ```php
-app()->db('db$collection')->find();
+app()->use('[...]');
 ```
+
+### Helper `db()`
+The `db()` function is a database collection instance helper.
+```php
+// when using default connection ID
+// "[database]$[collection]"
+$db = db('app$users');
+// or "database", "collection"
+$db = db('app', 'users');
+
+// when using non-default connection ID
+// "[connectionId].[database].[collection]"
+$db = db('myDb$app$users')
+// or "connectionId", "database", "collection"
+$db = db('myDb', 'app', 'users');
+
+// when using a App\Model class with DBS (database string)
+$db = db(App\Model\User::class);
+```
+> Read more in [Database Connections](#database-connections)
+
+### Helper `db_datetime()`
+The `db_datetime()` function returns a `MongoDB\BSON\UTCDateTime` object.
+```php
+$dbDt = db_datetime();
+$dt = $dbDt->toDateTime(); // DateTime object
+
+// with milliseconds
+$dbDt = db_datetime(strtotime('-1 day') * 1000);
+```
+
+### Helper `debug()`
+The `debug()` function is a debugger and logging helper. When called the `debug()` function will append the debugger info and send to logger (`Logger::debug()`).
+```php
+debug('test');
+// same as:
+// Debugger::append('test');
+// (new Logger)->debug('test');
+
+// title/name can be used:
+debug('test', ['info' => 'here');
+// same as:
+// Debugger::append(['info' => 'here'])->name('test');
+// (new Logger)->debug('test', ['info' => 'here']);
+
+// title/name and group/channel can be used:
+debug('test', ['info' => 'here'], 'name');
+// same as:
+// Debugger::append(['info' => 'here'])->name('test')->group('name');
+// (new Logger('name'))->debug('test', ['info' => 'here']);
+```
+> Also see [`x()`](#helper-x) helper function
+
+> Read more in [Debugger](#debugger) and [Logging](#logging)
 
 ### Helper `env()`
 The `env()` function is an environment variables helper.
@@ -1388,6 +1659,9 @@ The `halt()` function can be used to immediately return an HTTP response status 
 halt(404, 'Resource not found');
 // returns HTTP response status code 404
 // with JSON body {"message": "Resource not found"}
+
+// use custom JSON response
+halt(500, ['error' => 'message', 'context' => ['test']]);
 
 // halt without message
 halt(500);
@@ -1446,7 +1720,11 @@ router()->get('/', function() {
 > Read more in [Routing](#routing)
 
 ### Helper `x()`
-The `x()` is a debugger and dumper helepr.
+The `x()` function is a debugger and dumper helper. When called the `x()` function (or `Lark\Debugger::dump()`) will dump all debugger info objects and stop execution.
 ```php
 x('value', ['test' => 'this']);
 ```
+> Also see [`debug()`](#helper-debug) helper function
+
+> Read more in [Debugger](#debugger)
+

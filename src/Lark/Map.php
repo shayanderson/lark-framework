@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace Lark;
 
 /**
- * Map helper
+ * Map
  *
  * @author Shay Anderson
  */
@@ -89,6 +89,7 @@ class Map implements \Countable, \Iterator
 	 *
 	 * @return mixed
 	 */
+	#[\ReturnTypeWillChange]
 	final public function current()
 	{
 		return current($this->map);
@@ -153,6 +154,7 @@ class Map implements \Countable, \Iterator
 	 *
 	 * @return mixed
 	 */
+	#[\ReturnTypeWillChange]
 	final public function key()
 	{
 		return key($this->map);

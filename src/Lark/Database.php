@@ -181,7 +181,7 @@ class Database
 		return new Field($field, $this, function (
 			$results,
 			string $message,
-			array $context = [],
+			array $context,
 			Timer $timer
 		)
 		{
@@ -330,7 +330,7 @@ class Database
 	 *
 	 * @param array $filter
 	 * @param array $options
-	 * @return integer (affected)
+	 * @return integer Affected
 	 */
 	public function delete(array $filter, array $options = []): int
 	{
@@ -368,7 +368,7 @@ class Database
 	 * Delete all documents
 	 *
 	 * @param array $options
-	 * @return integer (affected)
+	 * @return integer Affected
 	 */
 	public function deleteAll(array $options = []): int
 	{
@@ -397,7 +397,7 @@ class Database
 	 *
 	 * @param array $ids
 	 * @param array $options
-	 * @return integer (affected)
+	 * @return integer Affected
 	 */
 	public function deleteIds(array $ids, array $options = []): int
 	{
@@ -429,7 +429,7 @@ class Database
 	 *
 	 * @param array $filter
 	 * @param array $options
-	 * @return integer (affected)
+	 * @return integer Affected
 	 */
 	public function deleteOne(array $filter, array $options = []): int
 	{
@@ -751,7 +751,7 @@ class Database
 	 *
 	 * @param array $documents
 	 * @param array $options
-	 * @return array (IDs)
+	 * @return array Document IDs
 	 */
 	public function insert(array $documents, array $options = []): array
 	{
@@ -798,7 +798,7 @@ class Database
 	 *
 	 * @param array|object $document
 	 * @param array $options
-	 * @return string|null
+	 * @return string|null Document ID
 	 */
 	public function insertOne($document, array $options = []): ?string
 	{
@@ -919,7 +919,7 @@ class Database
 	 * @param array $documents
 	 * @param array $options
 	 * @param bool $returnAffected
-	 * @return int|array affected count or IDs
+	 * @return int|array Document IDs or affected count if $returnAffected
 	 */
 	public function replaceBulk(array $documents, array $options = [], $returnAffected = false)
 	{
@@ -948,7 +948,7 @@ class Database
 	 * @param string|int $id
 	 * @param array|object $document
 	 * @param array $options
-	 * @return array|null
+	 * @return array|null Document
 	 */
 	public function replaceId($id, $document, array $options = []): ?array
 	{
@@ -985,7 +985,7 @@ class Database
 	 * @param array $filter
 	 * @param array|object $document
 	 * @param array $options
-	 * @return array|null
+	 * @return array|null Document
 	 */
 	public function replaceOne(array $filter, $document, array $options = []): ?array
 	{
@@ -1095,7 +1095,7 @@ class Database
 	 * @param array $filter
 	 * @param array|object $update
 	 * @param array $options
-	 * @return integer (affected)
+	 * @return integer Affected
 	 */
 	public function update(array $filter, $update, array $options = []): int
 	{
@@ -1147,7 +1147,7 @@ class Database
 	 * @param array $documents
 	 * @param array $options
 	 * @param bool $returnAffected
-	 * @return int|array affected count or IDs
+	 * @return int|array Document IDs or affected count if $returnAffected
 	 */
 	public function updateBulk(array $documents, array $options = [], $returnAffected = false)
 	{
@@ -1176,7 +1176,7 @@ class Database
 	 * @param string|int $id
 	 * @param array|object $update
 	 * @param array $options
-	 * @return array|null
+	 * @return array|null Updated document
 	 */
 	public function updateId($id, $update, array $options = []): ?array
 	{
@@ -1222,7 +1222,7 @@ class Database
 	 * @param array $filter
 	 * @param array|object $update
 	 * @param array $options
-	 * @return array|null
+	 * @return array|null Update document
 	 */
 	public function updateOne(array $filter, $update, array $options = []): ?array
 	{

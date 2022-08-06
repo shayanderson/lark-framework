@@ -10,8 +10,6 @@ declare(strict_types=1);
 
 namespace Lark;
 
-use Lark\Filter;
-
 /**
  * Lark app
  *
@@ -19,37 +17,6 @@ use Lark\Filter;
  */
 class App extends Factory\Singleton
 {
-	/**
-	 * Database collection factory
-	 *
-	 * @param string $name
-	 * @return Database
-	 */
-	final public function db(string $name): Database
-	{
-		return Database\Connection::factory($name);
-	}
-
-	/**
-	 * Filter helper
-	 *
-	 * @return \Lark\Filter
-	 */
-	final public function filter(): Filter
-	{
-		return Filter::getInstance();
-	}
-
-	/**
-	 * Request helper
-	 *
-	 * @return \Lark\Request
-	 */
-	final public function request(): Request
-	{
-		return Request::getInstance();
-	}
-
 	/**
 	 * Run app
 	 *
@@ -61,17 +28,7 @@ class App extends Factory\Singleton
 	}
 
 	/**
-	 * Response helper
-	 *
-	 * @return \Lark\Response
-	 */
-	final public function response(): Response
-	{
-		return Response::getInstance();
-	}
-
-	/**
-	 * Session helper
+	 * Session instance getter
 	 *
 	 * @return \Lark\Request\Session
 	 */
@@ -81,7 +38,7 @@ class App extends Factory\Singleton
 	}
 
 	/**
-	 * Config helper
+	 * Config setter
 	 *
 	 * @param string $path
 	 * @param mixed $args
@@ -89,6 +46,6 @@ class App extends Factory\Singleton
 	 */
 	final public function use(string $path, $args): void
 	{
-		Config::set($path, $args);
+		Binding::set($path, $args);
 	}
 }

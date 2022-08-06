@@ -15,7 +15,7 @@
 		}
 	],
 	"require": {
-		"mongodb/mongodb": "^1.5"
+		"mongodb/mongodb": "^1.9"
 	},
 	"autoload": {
 		"files": ["src/Lark/functions.php"],

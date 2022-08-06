@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Lark\Cli;
 
 use Lark\Cli\Console\Command;
+use Lark\Cli\Console\ConsoleException;
 
 /**
  * Console
@@ -26,6 +27,13 @@ class Console extends \Lark\Cli
 	 */
 	protected function __init(): void
 	{
+		///////////////////////////////////////////////////////////////////////////////////////
+		// init project
+		$this->option('--init', 'Initialize project', function ()
+		{
+			Command::init();
+		});
+
 		///////////////////////////////////////////////////////////////////////////////////////
 		// commit command
 		$this->command('commit', 'Commit revisions', ['c'])
@@ -47,7 +55,8 @@ class Console extends \Lark\Cli
 				'name',
 				'Model name like "User" or "Api/User" (do not use class name like "Api\User")'
 			)
-			->arg('schema', 'Schema name like "users" or "api/users"', ['optional'])
+			->arg('schema-name', 'Schema name like "users" or "api/users"', ['optional'])
+			->option('--schema', 'Link to existing schema like "users.php" or "users"')
 			->option(
 				'-t, --template',
 				'Path to model template file for using custom template (-t=PATH)'
@@ -68,14 +77,28 @@ class Console extends \Lark\Cli
 			->action([Command::class, 'rev']);
 
 		///////////////////////////////////////////////////////////////////////////////////////
+		// remove revision command
+		$this->command('rmrev', 'Remove a revision')
+			->arg('revision-id', 'Revision ID like \'20220000000000000$default$app$sessions$create\''
+				. ', use single quotes around ID or escape dollar signs using "\$"')
+			->action([Command::class, 'rmrev']);
+
+		///////////////////////////////////////////////////////////////////////////////////////
 		// route command
 		$this->command('route', 'Create a route', ['r'])
 			->arg('name', 'Route name like "users" or "api/users"')
 			->arg(
-				'model',
-				'Specific model name like "User" or "Api/User" (do not use class name like "Api\User")',
+				'model-name',
+				'Specific model name like "User" or "Api/User"'
+					. ' (do not use class name like "Api\User")',
 				['optional']
 			)
+			->option(
+				'--model',
+				'Link to existing model like "User" or "Api/User"'
+					. ' (do not use class name like "Api\User")'
+			)
+			->option('--schema', 'Link to existing schema like "users.php" or "users"')
 			->option(
 				'-t, --template',
 				'Path to route template file for using custom template (-t=PATH)'
@@ -124,7 +147,7 @@ class Console extends \Lark\Cli
 
 		if (!isset($dirs[$name]))
 		{
-			throw new CliException('Directory does not exist for "' . $name . '"');
+			throw new ConsoleException('Directory does not exist for "' . $name . '"');
 		}
 
 		return $dirs[$name];

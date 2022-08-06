@@ -37,7 +37,7 @@ class Template
 	 * @param string|null $templatePath
 	 * @param string $name
 	 * @param string $namespace
-	 * @param string $schemaPath
+	 * @param string $schemaPathRel
 	 * @param ?string $dbString
 	 * @return string
 	 */
@@ -45,7 +45,7 @@ class Template
 		?string $templatePath,
 		string $name,
 		string $namespace,
-		?string $schemaPath,
+		?string $schemaPathRel,
 		?string $dbString
 	): string
 	{
@@ -58,8 +58,8 @@ class Template
 		$template = self::getConsoleTemplate($templatePath);
 
 		$db = $dbString ? "const DBS = '{$dbString}';" : 'const DBS = null;';
-		$schemaStr = $schemaPath
-			? "require DIR_APP . '{$schemaPath}'"
+		$schemaStr = $schemaPathRel
+			? "require DIR_SCHEMAS . '/{$schemaPathRel}'"
 			: "['id' => ['string', 'id']]";
 
 		return str_replace([

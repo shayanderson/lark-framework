@@ -12,7 +12,6 @@ namespace Lark\Cli\Console;
 
 use DirectoryIterator;
 use Lark\App;
-use Lark\Cli\CliException;
 use Lark\Cli\Console;
 use ReflectionFunction;
 use ReflectionNamedType;
@@ -109,7 +108,7 @@ class Revision
 
 		if (!file_exists($rev->getPath()))
 		{
-			throw new CliException(
+			throw new ConsoleException(
 				'Revision "' . $revId . '" file does not exist "' . $rev->getPath() . '"'
 			);
 		}
@@ -314,7 +313,7 @@ class Revision
 
 					if ($status === null)
 					{
-						throw new CliException(
+						throw new ConsoleException(
 							'Invalid status for revision "' . $r[RevisionModel::FIELD_REV_ID] . '"'
 						);
 					}

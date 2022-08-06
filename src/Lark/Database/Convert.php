@@ -16,7 +16,7 @@ use MongoDB\Model\BSONDocument;
 use Traversable;
 
 /**
- * Database convert helper
+ * Database convert
  *
  * @author Shay Anderson
  */

@@ -12,7 +12,6 @@ namespace Lark\Cli\Console;
 
 use DateTime;
 use DateTimeZone;
-use Lark\Cli\CliException;
 use Lark\Cli\Console;
 use Lark\Database\Connection;
 
@@ -89,7 +88,8 @@ class RevisionFile extends \Lark\File
 
 			if (!class_exists($className))
 			{
-				throw new CliException(
+				p($className::DBS); #todo rm
+				throw new ConsoleException(
 					'Failed to get database string from model class "' . $className
 						. '", class not found'
 				);
@@ -99,7 +99,7 @@ class RevisionFile extends \Lark\File
 
 			if (!$dbString)
 			{
-				throw new CliException(
+				throw new ConsoleException(
 					'Failed to get database string from "' . $className . '::DBS"'
 				);
 			}
@@ -141,21 +141,16 @@ class RevisionFile extends \Lark\File
 	{
 		if ($this->exists())
 		{
-			throw new CliException('Revision file "' . $this->path() . '" already exists');
+			throw new ConsoleException('Revision file "' . $this->path() . '" already exists');
 		}
 
-		$model = new RevisionModel(
-			$this->connectionId,
-			$this->database,
-			$this->collection,
-			$this->revId
-		);
+		$model = $this->model();
 
 		$id = $model->insertRev();
 
 		if (!$id)
 		{
-			throw new CliException(
+			throw new ConsoleException(
 				'Failed to create revision in database for "' . $this->revId . '"'
 			);
 		}
@@ -169,7 +164,7 @@ class RevisionFile extends \Lark\File
 			)
 		))
 		{
-			throw new CliException('Failed to create revision file "' . $this->path() . '"');
+			throw new ConsoleException('Failed to create revision file "' . $this->path() . '"');
 		}
 
 		$console->output()->ok('Revision created "' . $this->revId . '"');
@@ -220,7 +215,7 @@ class RevisionFile extends \Lark\File
 		$maxLen = 60;
 		if (strlen($description) > $maxLen)
 		{
-			throw new CliException('Invalid revision description, length cannot exceed ' . $maxLen, [
+			throw new ConsoleException('Invalid revision description, length cannot exceed ' . $maxLen, [
 				'description' => $description
 			]);
 		}
@@ -274,6 +269,21 @@ class RevisionFile extends \Lark\File
 	}
 
 	/**
+	 * Revision model getter
+	 *
+	 * @return RevisionModel
+	 */
+	private function model(): RevisionModel
+	{
+		return new RevisionModel(
+			$this->connectionId,
+			$this->database,
+			$this->collection,
+			$this->revId
+		);
+	}
+
+	/**
 	 * Parse revision name to connectionId, database and collection
 	 *
 	 * @param string $name
@@ -289,5 +299,22 @@ class RevisionFile extends \Lark\File
 		}
 
 		return array_slice($parts, 1, 3);
+	}
+
+	/**
+	 * Remove a revision (file + database)
+	 *
+	 * @param string $revId
+	 * @return boolean
+	 */
+	public static function remove(string $revId): bool
+	{
+		$file = new parent(
+			self::fromRevIdToPath($revId)
+		);
+
+		$file->existsOrException();
+
+		return $file->delete();
 	}
 }

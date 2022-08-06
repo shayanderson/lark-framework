@@ -13,6 +13,7 @@ namespace Lark;
 use Closure;
 use Lark\Router\Route;
 use Lark\Router\NotFoundException;
+use Lark\Router\RouteControllerInterface;
 use Lark\Router\RouterException;
 use stdClass;
 
@@ -143,8 +144,8 @@ class Router extends Factory\Singleton
 			)
 			{
 				Route::action($action, true, [
-					App::getInstance()->request(),
-					App::getInstance()->response()
+					req(),
+					res()
 				]);
 				continue;
 			}
@@ -156,6 +157,29 @@ class Router extends Factory\Singleton
 			}
 		}
 
+		return $this;
+	}
+
+	/**
+	 * Use router controller
+	 *
+	 * @param RouteControllerInterface $controller
+	 * @return self
+	 * @throws RouterException when using without group or route group loading
+	 */
+	public function controller(RouteControllerInterface $controller): self
+	{
+		if (!self::$routeBase)
+		{
+			throw new RouterException(
+				'Cannot use router controller without Route Group or Route Group Loading',
+				[
+					'controller' => get_class($controller)
+				]
+			);
+		}
+
+		$controller->bind($this);
 		return $this;
 	}
 
@@ -423,12 +447,12 @@ class Router extends Factory\Singleton
 	/**
 	 * Route setter for multiple HTTP methods
 	 *
-	 * @param array $methods
+	 * @param array|string $methods
 	 * @param string $route
 	 * @param Closure|array $action
 	 * @return self
 	 */
-	public function route(array $methods, string $route, $action): self
+	public function route($methods, string $route, $action): self
 	{
 		return $this->routeAdd($methods, $route, $action);
 	}

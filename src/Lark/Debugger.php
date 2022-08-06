@@ -50,7 +50,7 @@ class Debugger
 	 */
 	public static function dump(): void
 	{
-		if (PHP_SAPI !== 'cli' && Config::get('debug', false))
+		if (PHP_SAPI !== 'cli' && Binding::get('debug.dump', false))
 		{
 			// add HTTP request context
 			$req = req();
@@ -93,8 +93,8 @@ class Debugger
 				$debugger = $a;
 				continue;
 			}
-			// debug()
-			else if (($a['function'] ?? null) === 'x')
+			// x() or debug()
+			else if (($a['function'] ?? null) === 'x' || ($a['function'] ?? null) === 'debug')
 			{
 				$debug = $a;
 				continue;
@@ -134,24 +134,30 @@ class Debugger
 	/**
 	 * Debugger append info for internal calls
 	 *
-	 * @param string $name
-	 * @param mixed ...$context
+	 * @param string $message
+	 * @param mixed $context
 	 * @return void
 	 */
-	public static function internal(string $name, ...$context): void
+	public static function internal(string $message, $context = null): void
 	{
-		static $isDebug;
+		static $isDump, $isLog;
 
-		if ($isDebug === null)
+		if ($isDump === null || $isLog === null)
 		{
-			$isDebug = Config::get('debug', false);
+			$isDump = Binding::get('debug.dump', false);
+			$isLog = Binding::get('debug.log', false);
 		}
 
-		if ($isDebug)
+		if ($isDump)
 		{
-			Debugger::append(...$context)
-				->name($name)
+			Debugger::append($context)
+				->name($message)
 				->group('$lark');
+		}
+
+		if ($isLog)
+		{
+			(new Logger('$lark'))->debug($message, $context);
 		}
 	}
 }

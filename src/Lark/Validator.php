@@ -97,7 +97,8 @@ class Validator
 
 		if (self::$ruleBinding === null) // init
 		{
-			self::$ruleBinding = Config::get('validator.rule', []);
+			#todo test
+			self::$ruleBinding = Binding::get('validator.rule', []);
 		}
 	}
 
@@ -179,6 +180,16 @@ class Validator
 				case 'boolean':
 					unset($rules[$k]);
 					return 'boolean';
+					break;
+
+				case 'datetime':
+					unset($rules[$k]);
+					return 'datetime';
+					break;
+
+				case 'dbdatetime':
+					unset($rules[$k]);
+					return 'dbdatetime';
 					break;
 
 				case 'float':
@@ -468,11 +479,14 @@ class Validator
 				{
 					if (strpos($ex->getMessage(), 'does not exist') !== false)
 					{
-						throw new ValidatorException('Invalid ' . $fieldType . ' rule "' . $rule . '"', [
-							'field' => $field,
-							'type' => $fieldType,
-							'ruleClass' => $ruleClass
-						]);
+						throw new ValidatorException(
+							'Invalid ' . $fieldType . ' rule "' . $rule . '"',
+							[
+								'field' => $field,
+								'type' => $fieldType,
+								'ruleClass' => $ruleClass
+							]
+						);
 					}
 
 					throw $ex;

@@ -11,7 +11,7 @@ declare(strict_types=1);
 namespace Lark\Http;
 
 /**
- * HTTP client helper
+ * HTTP client
  *
  * @author Shay Anderson
  */

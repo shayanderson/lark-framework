@@ -205,7 +205,7 @@ class Response extends Factory\Singleton
 	{
 		$this->contentType('application/json');
 
-		if (App::getInstance()->request()->query('pretty')->has()) // pretty
+		if (req()->query('pretty')->has()) // pretty
 		{
 			echo json_encode($data, JSON_PRETTY_PRINT) . PHP_EOL;
 		}

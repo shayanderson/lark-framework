@@ -59,6 +59,18 @@ class Cli extends Factory\Singleton
 	private array $options = ['.map' => []];
 
 	/**
+	 * Abort command
+	 *
+	 * @param integer $status
+	 * @return void
+	 */
+	public function abort(int $status = 0): void
+	{
+		$this->output()->colorYellow->echo('Command aborted.');
+		$this->exit($status);
+	}
+
+	/**
 	 * Register command
 	 *
 	 * @param string $name
@@ -371,7 +383,7 @@ class Cli extends Factory\Singleton
 	}
 
 	/**
-	 * Input helper
+	 * Input
 	 *
 	 * @param string $text
 	 * @param mixed $default
@@ -585,7 +597,7 @@ class Cli extends Factory\Singleton
 
 		if ($action instanceof Closure)
 		{
-			$code = call_user_func_array($action, $params);
+			$code = call_user_func_array($action, array_values($params));
 		}
 		else if (is_array($action))
 		{
@@ -594,7 +606,7 @@ class Cli extends Factory\Singleton
 				throw new CliException('Invalid command action, class or method does not exist');
 			}
 
-			$code = call_user_func_array([new $action[0], $action[1]], $params);
+			$code = call_user_func_array([new $action[0], $action[1]], array_values($params));
 		}
 		else
 		{

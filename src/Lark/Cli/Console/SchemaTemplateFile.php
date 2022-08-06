@@ -10,11 +10,10 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Cli\CliException;
 use Lark\Cli\Console;
+use Lark\Json\Decoder as JsonDecoder;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use stdClass;
 
 /**
  * Console schema template file
@@ -40,8 +39,7 @@ class SchemaTemplateFile extends File
 		if ($schemaFile->write(
 			Template::schema(
 				$this->getInputName()->getNamespaceName(),
-				// always convert to array from Schema object
-				(array)$this->readJson(),
+				$this->readJson(),
 				File::absolutePathToRelative($this->path())
 			)
 		))
@@ -54,7 +52,7 @@ class SchemaTemplateFile extends File
 		}
 		else
 		{
-			throw new CliException('Failed to compile schema file', [
+			throw new ConsoleException('Failed to compile schema file', [
 				'path' => $schemaFile->path(),
 				'templatePath' => $this->path()
 			]);
@@ -111,7 +109,7 @@ class SchemaTemplateFile extends File
 		// match: '(subdirs)schema.(name).json'
 		if (!preg_match('/^(.*?)schema\.(.*)\.json/', $filePathRel, $m))
 		{
-			throw new CliException('Failed to parse name from file path', [
+			throw new ConsoleException('Failed to parse name from file path', [
 				'filePath' => $filePath,
 				'filePathRel' => $filePathRel
 			]);
@@ -123,12 +121,13 @@ class SchemaTemplateFile extends File
 	/**
 	 * Read file as JSON (decode)
 	 *
-	 * @return stdClass
+	 * @return array
 	 */
-	public function readJson(): stdClass
+	public function readJson(): array
 	{
-		return json_decode(
-			parent::read()
+		return JsonDecoder::decode(
+			parent::read(),
+			true
 		);
 	}
 

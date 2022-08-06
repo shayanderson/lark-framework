@@ -10,10 +10,12 @@ declare(strict_types=1);
 
 use App\App;
 use Lark\Database;
+use Lark\Database\Connection;
 use Lark\Debugger;
 use Lark\Debugger\Info as DebuggerInfo;
 use Lark\Debugger\Template as DebuggerTemplate;
 use Lark\Env;
+use Lark\Exception;
 use Lark\Logger;
 use Lark\Request;
 use Lark\Response;
@@ -26,7 +28,7 @@ use Lark\Router;
 /**
  * App instance getter
  *
- * @return \App\App
+ * @return App
  */
 function app(): App
 {
@@ -36,16 +38,60 @@ function app(): App
 /**
  * Database collection factory
  *
- * @param string $name
+ * @param string ...$name "connId.db.coll"
+ * 		or "App\Model\ClassName"
+ * 		or "database", "collection"
+ * 		or "connectionId", "database", "collection"
  * @return Database
  */
-function db(string $name): Database
+function db(string ...$name): Database
 {
-	return app()->db($name);
+	return Connection::factory(...$name);
 }
 
 /**
- * Environment variables helper
+ * MongoDB UTCDateTime object getter
+ *
+ * @param int|float|string|DateTimeInterface $milliseconds
+ * @return \MongoDB\BSON\UTCDateTime
+ */
+function db_datetime($milliseconds = null)
+{
+	return $milliseconds === null
+		? new MongoDB\BSON\UTCDateTime
+		: new MongoDB\BSON\UTCDateTime($milliseconds);
+}
+
+/**
+ * Debug helper
+ *
+ * @param string $message
+ * @param mixed $context
+ * @param string $channelGroup
+ * @return void
+ */
+function debug(string $message, $context = null, string $channelGroup = null): void
+{
+	if (func_num_args() === 3)
+	{
+		Debugger::append($context)->name($message)->group($channelGroup);
+	}
+	else if (func_num_args() === 2)
+	{
+		Debugger::append($context)->name($message);
+	}
+	else
+	{
+		Debugger::append($message);
+	}
+
+	(new Logger(
+		$channelGroup ? $channelGroup : ''
+	))->debug($message, $context);
+}
+
+/**
+ * Environment variables getter
  *
  * @param string $key
  * @param mixed $default (throws exception on invalid key if argument is not set)
@@ -87,17 +133,24 @@ function f(string $format, ...$values): string
 /**
  * Stop execution with response status code and optional message
  *
- * @param integer $responseStatusCode
+ * @param mixed $responseStatusCode
  * @param string|null $message
  * @return void
  */
-function halt(int $responseStatusCode, string $message = null): void
+function halt(int $responseStatusCode, $message = null): void
 {
 	res()->code($responseStatusCode);
 
 	if ($message)
 	{
-		res()->json(['message' => $message]);
+		if (is_array($message) || is_object($message))
+		{
+			res()->json($message);
+		}
+		else
+		{
+			res()->json(['message' => $message]);
+		}
 	}
 	else
 	{
@@ -106,10 +159,31 @@ function halt(int $responseStatusCode, string $message = null): void
 }
 
 /**
+ * Generate random key
+ *
+ * @param int $length (length returned in bytes, minimum 8)
+ * @return string
+ */
+function keygen(int $length = 32): string
+{
+	if ($length < 8)
+	{
+		throw new Exception('Invalid length used in ' . __FUNCTION__ . ', minimum length is 8');
+	}
+
+	if (!function_exists('random_bytes'))
+	{
+		return bin2hex(openssl_random_pseudo_bytes($length));
+	}
+
+	return bin2hex(random_bytes($length));
+}
+
+/**
  * Logger helper
  *
  * @param string $channel
- * @return \Lark\Logger
+ * @return Logger
  */
 function logger(string $channel = ''): Logger
 {
@@ -167,29 +241,29 @@ function pa(...$values): void
 }
 
 /**
- * Request helper
+ * Request instance getter
  *
  * @return Request
  */
 function req(): Request
 {
-	return app()->request();
+	return Request::getInstance();
 }
 
 /**
- * Response helper
+ * Response instance getter
  *
  * @return Response
  */
 function res(): Response
 {
-	return app()->response();
+	return Response::getInstance();
 }
 
 /**
- * Router helper
+ * Router instance getter
  *
- * @return \Lark\Router
+ * @return Router
  */
 function router(): Router
 {
@@ -197,7 +271,7 @@ function router(): Router
 }
 
 /**
- * Debugger helper
+ * Debugger instance getter
  *
  * @param mixed ...$context
  * @return void

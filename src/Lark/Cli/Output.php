@@ -269,7 +269,7 @@ class Output
 	}
 
 	/**
-	 * Grid helper
+	 * Grid
 	 *
 	 * @param array $data
 	 * @param array $options

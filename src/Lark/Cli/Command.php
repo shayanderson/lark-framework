@@ -110,7 +110,10 @@ class Command
 
 		if (isset($this->args[$name]) || isset($this->options[$name]))
 		{
-			throw new CliException("Parameter \"{$name}\" has already been registered");
+			throw new CliException(
+				"Parameter \"{$name}\" has already been registered,"
+					. ' arguments and options cannot share the same name'
+			);
 		}
 
 		if ($param instanceof Argument)
