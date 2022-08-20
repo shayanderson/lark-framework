@@ -313,6 +313,16 @@ class Client
 	}
 
 	/**
+	 * Client options getter
+	 *
+	 * @return array
+	 */
+	public function getOptions(): array
+	{
+		return $this->options;
+	}
+
+	/**
 	 * OPTIONS request
 	 *
 	 * @param string $url

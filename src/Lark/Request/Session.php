@@ -37,7 +37,7 @@ class Session extends \Lark\Factory\Singleton
 	/**
 	 * Init
 	 */
-	protected function __init()
+	protected function __init(): void
 	{
 		$this->start();
 	}
@@ -96,6 +96,16 @@ class Session extends \Lark\Factory\Singleton
 		Debugger::internal(__METHOD__, [
 			'session' => $this->state
 		]);
+	}
+
+	/**
+	 * Check if sessions are enabled and session exists
+	 *
+	 * @return boolean
+	 */
+	public static function exists(): bool
+	{
+		return session_status() === PHP_SESSION_ACTIVE;
 	}
 
 	/**

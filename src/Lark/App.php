@@ -18,6 +18,16 @@ namespace Lark;
 class App extends Factory\Singleton
 {
 	/**
+	 * Exit application
+	 *
+	 * @return void
+	 */
+	final public function exit(): void
+	{
+		Router::getInstance()->exit();
+	}
+
+	/**
 	 * Run app
 	 *
 	 * @return void

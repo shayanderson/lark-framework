@@ -27,7 +27,7 @@ class Decoder
 	 * @param integer $depth
 	 * @param integer $flags
 	 * @return mixed Null if the string cannot be decoded or data is deeper than the nesting limit
-	 * @throws Exception on JSON decode error
+	 * @throws Exception On JSON decode error
 	 */
 	public static function decode(
 		string $json,

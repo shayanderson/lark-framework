@@ -128,6 +128,11 @@ class Connection
 	 */
 	public static function factory(string ...$name): Database
 	{
+		if (!count($name))
+		{
+			throw new DatabaseException('Invalid database connection string (empty)');
+		}
+
 		// "connId.db.coll" or "db.coll"
 		if (count($name) > 1)
 		{

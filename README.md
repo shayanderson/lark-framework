@@ -32,7 +32,7 @@ Lark is a modern, lightweight app framework designed specifically for developing
 
 Requirements:
 
-- PHP 7.4, 8
+- PHP 8
 - PHP extensions
   - Required
 	- [...]
@@ -75,7 +75,7 @@ router()->patch('/route', function(){});
 router()->post('/route', function(){});
 router()->put('/route', function(){});
 
-// route for ALL HTTP methods
+// route for all HTTP methods
 router()->all('/route', function(){});
 
 // route for multiple HTTP methods
@@ -140,7 +140,7 @@ router()
 ```
 
 #### Route Controller
-A route controller object can be used with [Route Groups](#route-groups) or [Route Group Loading](#route-group-loading).
+A route controller object can be used with [Route Groups](#route-groups) and [Route Group Loading](#route-group-loading).
 ```php
 class MyController implements Lark\Router\RouteControllerInterface
 {
@@ -635,6 +635,7 @@ Session methods `clear()`, `get()`, `has()` and `set()` all use dot notation for
 - `static cookieOptions(array $options)` - set cookie options
   - default options are: `['lifetime' => 0, 'path' => '/', 'domain' => '', 'secure' => false, 'httponly' => false]`
 - `destroy()` - destroy a session
+- `static exists(): bool` - check if sessions are enabled and session exists
 - `get(string $key)` - value getter
 - `has(string $key): bool` - check if key exists
 - `id(): ?string` - session ID getter
@@ -729,7 +730,7 @@ $affected = $db->update(['role' => 'admin'], ['role' => 'admin2']);
 
 // update bulk
 $docIds = $db->updateBulk([
-	['id' => '62ba4fd034faaf6fc132ef55', 'role' => 'admin'],
+    ['id' => '62ba4fd034faaf6fc132ef55', 'role' => 'admin'],
     [...]
 ]);
 // Array ( [0] => 62ba4fd034faaf6fc132ef55 [1] => ... )
@@ -745,14 +746,14 @@ $newDoc = $db->updateOne(['name' => 'Test2'], ['role' => 'admin']);
 ```php
 // replace bulk
 $docIds = $db->replaceBulk([
-	['id' => '62ba4fd034faaf6fc132ef55', 'name' => 'Test222'],
+    ['id' => '62ba4fd034faaf6fc132ef55', 'name' => 'Test222'],
     [...]
 ]);
 // Array ( [0] => 62ba4fd034faaf6fc132ef55 [1] => ... )
 
 // replace single document by ID
 $newDoc = $db->replaceId('62ba4fd034faaf6fc132ef55',
-	['name' => 'Test2222', 'role' => 'admin']);
+    ['name' => 'Test2222', 'role' => 'admin']);
 
 // replace single document
 $newDoc = $db->replaceOne(['name' => 'Test2222'], ['name' => 'Test2', 'role' => 'admin']);
@@ -856,13 +857,31 @@ $schema = new Schema([
     //	['username' => 1, '$name' => 'idxUsername', '$unique' => true],
     //	['name' => 1, 'age' => 1, '$name' => 'idxNameAge']
     // ],
+    
+    // auto database projection (filter password by default)
+    '$filter' => ['password' => 0],
+    
+    // schema fields
     'name' => ['string', 'notEmpty'],
     'username' => ['string', 'notEmpty'],
-    'age' => ['int', 'notEmpty']
+    'password' => ['string', 'notEmpty'],
+    'age' => ['int', 'notEmpty'],
+    'isAdmin' => ['bool', 'notNull', ['default' => false]]
 ]);
 ```
 Schema uses [Validation Types & Rules](#validation-types--rules) for field definitions.
 > Options for in `$index` and `$indexes` are any field starting with `$`, like `$unique`, and more options can be found in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/method/db.collection.createIndex/#options)
+
+Default field values can also be set dynamically. For nested fields use dot notation like `field.nestedfield`.
+```php
+$schema->default('isAdmin', false);
+```
+Field value callbacks can be used. For nested fields use dot notation like `field.nestedfield`.
+```php
+$schema->apply('name', function($name): string {
+	return strtoupper($name);
+});
+```
 
 ## Model
 `Lark\Model` is a model: a way to simplify database calls and creating/validating entities.
@@ -942,6 +961,7 @@ $user = (new App\Model\User)->get('62ba4fd034faaf6fc132ef55');
 $docs = (new \App\Model\User)->db()->find(['role' => 'admin']);
 ```
 > Important: Model classes shouldn't have any required parameters in their `Model::__construct()` method, because the Models are automatically instantiated when using model/database binding, and any required parameters will not be present
+
 
 ## Validator
 

@@ -249,7 +249,11 @@ class Response extends Factory\Singleton
 	 */
 	public function send($data): void
 	{
-		echo $data;
+		if ($data !== null)
+		{
+			echo $data;
+		}
+
 		Router::getInstance()->exit();
 	}
 }

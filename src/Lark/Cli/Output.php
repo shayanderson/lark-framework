@@ -56,11 +56,11 @@ namespace Lark\Cli;
  * @property self $styleInvert
  * @property self $styleUnderline
  *
- * @method self dim(string $text, string $end = PHP_EOL) Print dim text
- * @method self error(string $text, string $end = PHP_EOL) Print error text
- * @method self info(string $text, string $end = PHP_EOL) Print info text
- * @method self ok(string $text, string $end = PHP_EOL) Print success text
- * @method self warn(string $text, string $end = PHP_EOL) Print warning text
+ * @method self dim($text, string $end = PHP_EOL) Print dim text
+ * @method self error($text, string $end = PHP_EOL) Print error text
+ * @method self info($text, string $end = PHP_EOL) Print info text
+ * @method self ok($text, string $end = PHP_EOL) Print success text
+ * @method self warn($text, string $end = PHP_EOL) Print warning text
  */
 class Output
 {
@@ -132,27 +132,27 @@ class Output
 		$this->reset();
 
 		$defaultStyleCallbacks = [
-			'dim' => function (string $text = '', string $end = PHP_EOL)
+			'dim' => function ($text = '', string $end = PHP_EOL)
 			{
 				$this->styleDim;
 				$this->stdout($this->stylize($text), $end);
 			},
-			'error' => function (string $text = '', string $end = PHP_EOL)
+			'error' => function ($text = '', string $end = PHP_EOL)
 			{
 				$this->bgRed;
 				$this->stderr($this->stylize($text), $end);
 			},
-			'info' => function (string $text = '', string $end = PHP_EOL)
+			'info' => function ($text = '', string $end = PHP_EOL)
 			{
 				$this->colorBlue;
 				$this->stdout($this->stylize($text), $end);
 			},
-			'ok' => function (string $text = '', string $end = PHP_EOL)
+			'ok' => function ($text = '', string $end = PHP_EOL)
 			{
 				$this->colorGreen;
 				$this->stdout($this->stylize($text), $end);
 			},
-			'warn' => function (string $text = '', string $end = PHP_EOL)
+			'warn' => function ($text = '', string $end = PHP_EOL)
 			{
 				$this->colorYellow;
 				$this->stdout($this->stylize($text), $end);
@@ -262,7 +262,7 @@ class Output
 	 * @param string $end
 	 * @return self
 	 */
-	public function echo(string $text = '', string $end = PHP_EOL): self
+	public function echo($text = '', string $end = PHP_EOL): self
 	{
 		$this->stdout($this->stylize($text), $end);
 		return $this;
@@ -372,8 +372,13 @@ class Output
 	 * @param string $end
 	 * @return self
 	 */
-	public function stderr(string $text, string $end = PHP_EOL): self
+	public function stderr($text, string $end = PHP_EOL): self
 	{
+		if (!is_string($text))
+		{
+			$text = self::toString($text);
+		}
+
 		fwrite(STDERR, $text . $end);
 		return $this;
 	}
@@ -385,8 +390,13 @@ class Output
 	 * @param string $end
 	 * @return self
 	 */
-	public function stdout(string $text = '', string $end = PHP_EOL): self
+	public function stdout($text = '', string $end = PHP_EOL): self
 	{
+		if (!is_string($text))
+		{
+			$text = self::toString($text);
+		}
+
 		fwrite(STDOUT, $text . $end);
 		return $this;
 	}
@@ -409,8 +419,13 @@ class Output
 	 * @param string $text
 	 * @return string
 	 */
-	protected function stylize(string $text): string
+	protected function stylize($text): string
 	{
+		if (!is_string($text))
+		{
+			$text = self::toString($text);
+		}
+
 		$text = $this->style['indent'] . $text;
 
 		if ($this->hasStyle)
@@ -438,5 +453,21 @@ class Output
 
 		$this->reset();
 		return $text;
+	}
+
+	/**
+	 * Value to string
+	 *
+	 * @param mixed $value
+	 * @return string
+	 */
+	protected static function toString($value): string
+	{
+		if ($value !== null && !is_scalar($value))
+		{
+			$value = trim(print_r($value, true));
+		}
+
+		return (string)$value;
 	}
 }

@@ -353,6 +353,13 @@ class Validator
 				continue;
 			}
 
+			// check for schema field value callback
+			$fieldName = implode('.',  array_merge($parentPath, [$field]));
+			if ($this->schema->hasCallback($fieldName))
+			{
+				$data[$field] = $value = $this->schema->getCallback($fieldName)($value);
+			}
+
 			$rules = $schema[$field];
 
 			if ($rules === null) // optional field, no rules

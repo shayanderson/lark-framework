@@ -530,6 +530,7 @@ class Database
 	{
 		$timer = new Timer;
 		$this->optionsFind($options);
+
 		Convert::inputIdToObjectId($filter);
 
 		return $this->debug(
@@ -856,12 +857,38 @@ class Database
 	 */
 	private function optionsFind(array &$options): void
 	{
+		// auto limit
 		if (
 			!isset($options['limit'])
 			&& $this->connection()->getOptions()[ConnectionOptions::FIND_LIMIT] > 0
 		)
 		{
 			$options['limit'] = $this->connection()->getOptions()[ConnectionOptions::FIND_LIMIT];
+		}
+
+		$this->optionsModelFilter($options);
+	}
+
+	/**
+	 * Auto projection from model schema $filter
+	 *
+	 * @param array $options
+	 * @return void
+	 */
+	private function optionsModelFilter(array &$options): void
+	{
+		if (!$this->hasModel())
+		{
+			return;
+		}
+
+		// auto projection from $filter
+		if (
+			!isset($options['projection'])
+			&& $this->model->schema()->hasFilter()
+		)
+		{
+			$options['projection'] = $this->model->schema()->getFilter();
 		}
 	}
 
@@ -990,6 +1017,7 @@ class Database
 	public function replaceOne(array $filter, $document, array $options = []): ?array
 	{
 		$this->optionsWrite($options);
+		$this->optionsModelFilter($options);
 		$timer = new Timer;
 		Convert::inputIdToObjectId($filter);
 
@@ -1227,6 +1255,7 @@ class Database
 	public function updateOne(array $filter, $update, array $options = []): ?array
 	{
 		$this->optionsWrite($options);
+		$this->optionsModelFilter($options);
 		$timer = new Timer;
 		Convert::inputIdToObjectId($filter);
 

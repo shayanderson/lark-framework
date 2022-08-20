@@ -29,7 +29,7 @@ abstract class Singleton
 	/**
 	 * Protected
 	 */
-	private function __construct()
+	final protected function __construct()
 	{
 		if (method_exists($this, '__init'))
 		{
@@ -40,7 +40,7 @@ abstract class Singleton
 	/**
 	 * Not allowed
 	 */
-	private function __clone()
+	final protected function __clone()
 	{
 		throw new Exception('This method is not allowed in Singleton', [
 			'method' => '__clone'
@@ -50,7 +50,7 @@ abstract class Singleton
 	/**
 	 * Not allowed
 	 */
-	public function __wakeup()
+	final public function __wakeup()
 	{
 		throw new Exception('This method is not allowed in Singleton', [
 			'method' => '__wakeup'

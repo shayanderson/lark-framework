@@ -447,12 +447,12 @@ class Router extends Factory\Singleton
 	/**
 	 * Route setter for multiple HTTP methods
 	 *
-	 * @param array|string $methods
+	 * @param array $methods
 	 * @param string $route
 	 * @param Closure|array $action
 	 * @return self
 	 */
-	public function route($methods, string $route, $action): self
+	public function route(array $methods, string $route, $action): self
 	{
 		return $this->routeAdd($methods, $route, $action);
 	}

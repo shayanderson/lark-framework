@@ -18,11 +18,25 @@ namespace Lark;
 class Schema
 {
 	/**
+	 * Field value callbacks
+	 *
+	 * @var array
+	 */
+	private array $callbacks;
+
+	/**
 	 * Default values
 	 *
 	 * @var array
 	 */
 	private array $defaults = [];
+
+	/**
+	 * Filter fields
+	 *
+	 * @var array
+	 */
+	private array $filter = [];
 
 	/**
 	 * Indexes
@@ -73,6 +87,11 @@ class Schema
 			{
 				switch ($field)
 				{
+					case '$filter':
+						// auto db field filter
+						$this->filter = $schema[$field];
+						break;
+
 					case '$index':
 						// single index
 						$this->indexes[] = $schema[$field];
@@ -87,7 +106,9 @@ class Schema
 						break;
 
 					default:
-						throw new Exception('Schema field names cannot start with "$"');
+						throw new Exception('Schema field names cannot start with "$"', [
+							'field' => $field
+						]);
 						break;
 				}
 
@@ -103,6 +124,34 @@ class Schema
 	}
 
 	/**
+	 * Apply field value callback
+	 *
+	 * @param string $field
+	 * @param callable $callback
+	 * @return self
+	 */
+	public function apply(string $field, callable $callback): self
+	{
+		#todo verify field (and nested field) exists in schema
+		$this->callbacks[$field] = $callback;
+		return $this;
+	}
+
+	/**
+	 * Field default value setter
+	 *
+	 * @param string $field
+	 * @param mixed $value
+	 * @return self
+	 */
+	public function default(string $field, $value): self
+	{
+		#todo verify field (and nested field) exists in schema
+		$this->defaults[$field] = $value;
+		return $this;
+	}
+
+	/**
 	 * Default values setter
 	 *
 	 * @param array $schema
@@ -115,7 +164,7 @@ class Schema
 		{
 			if ($k === 'default')
 			{
-				$this->defaults[$parent] = $v;
+				$this->default($parent, $v);
 			}
 			else if (is_array($v)) // default values can be array
 			{
@@ -127,24 +176,51 @@ class Schema
 	}
 
 	/**
-	 * Default value getter
+	 * Field value callback getter
 	 *
-	 * @param string $path
-	 * @return void
+	 * @param string $field
+	 * @return callable
+	 * @throws Exception If schema field value callback does not exist
 	 */
-	public function getDefault(string $path)
+	public function getCallback(string $field): callable
 	{
-		return $this->defaults[$path] ?? null;
+		if (!$this->hasCallback($field))
+		{
+			throw new Exception('Schema callback not found for field "' . $field . '"');
+		}
+
+		return $this->callbacks[$field];
 	}
 
 	/**
-	 * Default values getter
+	 * Default field value getter
+	 *
+	 * @param string $field
+	 * @return void
+	 */
+	public function getDefault(string $field)
+	{
+		return $this->defaults[$field] ?? null;
+	}
+
+	/**
+	 * Default fields values getter
 	 *
 	 * @return array
 	 */
 	public function getDefaults(): array
 	{
 		return $this->defaults;
+	}
+
+	/**
+	 * Field filter getter
+	 *
+	 * @return array
+	 */
+	public function getFilter(): array
+	{
+		return $this->filter;
 	}
 
 	/**
@@ -189,12 +265,33 @@ class Schema
 	}
 
 	/**
+	 * Check if field value callback exists
+	 *
+	 * @param string $field
+	 * @return boolean
+	 */
+	public function hasCallback(string $field): bool
+	{
+		return isset($this->callbacks[$field]);
+	}
+
+	/**
+	 * Check if field fitler exists
+	 *
+	 * @return boolean
+	 */
+	public function hasFilter(): bool
+	{
+		return count($this->filter) > 0;
+	}
+
+	/**
 	 * Name setter
 	 *
 	 * @param string|null $name
 	 * @return self
 	 */
-	public function setName(?string $name): self
+	public function name(?string $name): self
 	{
 		$this->name = $name;
 		return $this;

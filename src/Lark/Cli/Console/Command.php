@@ -434,7 +434,6 @@ class Command
 		$this->output()->echo('Schema name: "' . $inputName->getNamespaceName() . '"');
 
 		$schemaFile = SchemaFile::factory($inputName);
-		$schemaFile->fileExistsAbort();
 		$schemaTemplateFile = SchemaTemplateFile::factory($inputName);
 
 		// compile
@@ -442,6 +441,13 @@ class Command
 		{
 			$schemaTemplateFile->compile();
 			return $schemaFile;
+		}
+
+		// do not overwrite existing schema file
+		if ($schemaFile->exists())
+		{
+			$this->console->error('Schema file already exists for "'
+				. $inputName->getNamespaceName() . '" ("' . $schemaFile->path() . '")');
 		}
 
 		// create template

@@ -105,7 +105,7 @@ abstract class Model
 		$schema = static::schema();
 
 		// set model class as name
-		$schema->setName(
+		$schema->name(
 			// rm namespace if exists
 			strpos(static::class, '\\') !== false
 				? substr(strrchr(static::class, '\\'), 1)

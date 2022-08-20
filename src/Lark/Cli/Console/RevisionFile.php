@@ -88,7 +88,6 @@ class RevisionFile extends \Lark\File
 
 			if (!class_exists($className))
 			{
-				p($className::DBS); #todo rm
 				throw new ConsoleException(
 					'Failed to get database string from model class "' . $className
 						. '", class not found'
