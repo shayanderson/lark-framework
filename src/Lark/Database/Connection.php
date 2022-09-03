@@ -12,7 +12,6 @@ namespace Lark\Database;
 
 use Lark\Binding;
 use Lark\Database;
-use Lark\Model;
 use MongoDB\Client;
 
 /**
@@ -39,16 +38,16 @@ class Connection
 	/**
 	 * Connections
 	 *
-	 * @var array
+	 * @var Connection[]
 	 */
 	private static array $connections = [];
 
 	/**
-	 * Database object
+	 * Database objects
 	 *
-	 * @var Database
+	 * @var Database[]
 	 */
-	private Database $database;
+	private static array $databases = [];
 
 	/**
 	 * Default connection ID
@@ -96,28 +95,6 @@ class Connection
 	}
 
 	/**
-	 * Database object getter
-	 *
-	 * @param string $name
-	 * @param ?Model $model
-	 * @return Database
-	 */
-	private function database(string $name, ?Model $model): Database
-	{
-		if (!isset($this->database))
-		{
-			$this->database = new Database($this, $name, $model);
-		}
-		else
-		{
-			$this->database->setDatabase($name);
-			$this->database->setModel($model);
-		}
-
-		return $this->database;
-	}
-
-	/**
 	 * Database collection factory
 	 *
 	 * @param string ...$name "connId.db.coll"
@@ -159,13 +136,65 @@ class Connection
 			$name = constant("{$name}::DBS");
 		}
 
-		$name = self::parseDatabaseString($name);
+		[$connId, $db, $coll] = self::parseDatabaseString($name);
 
-		$conn = self::make($name[0]);
-		$db = $conn->database($name[1], $model);
-		$db->setCollection($name[2]);
+		if (!isset(self::$databases[$connId][$db][$coll]))
+		{
+			self::$databases[$connId][$db][$coll] = new Database(
+				self::factoryConnection($connId),
+				$db,
+				$coll,
+				$model
+			);
+		}
 
-		return $db;
+		return self::$databases[$connId][$db][$coll];
+	}
+
+	/**
+	 * Connection factory
+	 *
+	 * @param string $id
+	 * @return Connection
+	 */
+	private static function &factoryConnection(string $id): Connection
+	{
+		// create connection
+		if (!isset(self::$connections[$id]))
+		{
+			self::initConfig();
+
+			// get connection params from config
+			if (!isset(self::$config['connection'][$id]))
+			{
+				throw new DatabaseException(
+					'No database connection found for ID "' . $id . '"'
+				);
+			}
+
+			// create/validate client params
+			$clientParams = (new ClientParams($id))
+				->set(self::$config['connection'][$id])
+				->make();
+
+			// extract hosts
+			$hosts = $clientParams['hosts'];
+
+			// set connection options
+			$connectionOptions = new ConnectionOptions($id);
+			$connectionOptions->set(self::$config['options'] ?? []); // global
+			$connectionOptions->set($clientParams['options'] ?? []); // connection
+
+			unset($clientParams['hosts'], $clientParams['options']);
+
+			self::$connections[$id] = new Connection(
+				$id,
+				$connectionOptions->make(),
+				new Client('mongodb://' . implode(',', $hosts), $clientParams)
+			);
+		}
+
+		return self::$connections[$id];
 	}
 
 	/**
@@ -230,52 +259,6 @@ class Connection
 		{
 			throw new DatabaseException('Invalid database default connection ID');
 		}
-	}
-
-	/**
-	 * Create connection and return instance
-	 *
-	 * @param string $id
-	 * @return Connection
-	 */
-	private static function make(string $id): Connection
-	{
-		// getter
-		if (isset(self::$connections[$id]))
-		{
-			return self::$connections[$id];
-		}
-
-		self::initConfig();
-
-		// get connection params from config
-		if (!isset(self::$config['connection'][$id]))
-		{
-			throw new DatabaseException('No database connection found for ID "' . $id . '"');
-		}
-
-		// create/validate client params
-		$clientParams = (new ClientParams($id))
-			->set(self::$config['connection'][$id])
-			->make();
-
-		// extract hosts
-		$hosts = $clientParams['hosts'];
-
-		// set connection options
-		$connectionOptions = new ConnectionOptions($id);
-		$connectionOptions->set(self::$config['options'] ?? []); // global
-		$connectionOptions->set($clientParams['options'] ?? []); // connection
-
-		unset($clientParams['hosts'], $clientParams['options']);
-
-		self::$connections[$id] = new Connection(
-			$id,
-			$connectionOptions->make(),
-			new Client('mongodb://' . implode(',', $hosts), $clientParams)
-		);
-
-		return self::make($id);
 	}
 
 	/**

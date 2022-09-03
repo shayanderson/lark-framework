@@ -56,6 +56,7 @@ class Console extends \Lark\Cli
 				'Model name like "User" or "Api/User" (do not use class name like "Api\User")'
 			)
 			->arg('schema-name', 'Schema name like "users" or "api/users"', ['optional'])
+			->option('--dbs', 'Database string like "default$app$users"')
 			->option('--schema', 'Link to existing schema like "users.php" or "users"')
 			->option(
 				'-t, --template',
@@ -93,6 +94,7 @@ class Console extends \Lark\Cli
 					. ' (do not use class name like "Api\User")',
 				['optional']
 			)
+			->option('--dbs', 'Database string like "default$app$users"')
 			->option(
 				'--model',
 				'Link to existing model like "User" or "Api/User"'

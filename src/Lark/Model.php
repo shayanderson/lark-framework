@@ -93,7 +93,7 @@ abstract class Model
 	 *
 	 * @return Schema
 	 */
-	abstract public static function schema(): Schema;
+	abstract public static function &schema(): Schema;
 
 	/**
 	 * Schema with name getter

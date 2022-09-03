@@ -35,11 +35,12 @@ Requirements:
 - PHP 8
 - PHP extensions
   - Required
-	- [...]
+  - [...]
   - Optional
-	- [curl](https://www.php.net/manual/en/book.curl.php) - if using `Lark\Http\Client`
+  - [curl](https://www.php.net/manual/en/book.curl.php) - if using `Lark\Http\Client`
 
 #### Composer Install
+
 ```
 composer require lark/framework
 ```
@@ -54,8 +55,8 @@ The router is used to dispatch route actions and middleware.
 
 // define routes
 router()
-	// get([route], [action])
-	->get('/', function() {});
+    // get([route], [action])
+    ->get('/', function() {});
 
 // run app
 app()->run();
@@ -102,29 +103,29 @@ Route groups can be used to simplify defining similar routes.
 
 ```php
 router()
-	->group('/api/users') // group([base-route])
-	->get('/', function(){}) // "/api/users"
-	->get('/active', function(){}); // "/api/users/active"
+    ->group('/api/users') // group([base-route])
+    ->get('/', function(){}) // "/api/users"
+    ->get('/active', function(){}); // "/api/users/active"
 ```
 
 #### Route Group Loading
 
-Route groups can be defined in *route files* which are loaded during routing (lazy load routes).
+Route groups can be defined in _route files_ which are loaded during routing (lazy load routes).
 
 ```php
 // bootstrap routes directory
 // ...
 
 router()->load([
-	// [base-route] => [file]
-	'/api/users' => 'users'
+    // [base-route] => [file]
+    '/api/users' => 'users'
 ]);
 
 // in routes directory file "users.php" defines routes
 // the group('/api/users') method does not need to be called (handled by load() method)
 router()
-	->get('/', function(){}) // "/api/users"
-	->get('/active', function(){}); // "/api/users/active"
+    ->get('/', function(){}) // "/api/users"
+    ->get('/active', function(){}); // "/api/users/active"
 ```
 
 Inside route files `router()` should only be called once to avoid false route no match errors.
@@ -135,25 +136,27 @@ router()->bind(function(){});
 router()->get('/', function(){});
 // correct:
 router()
-	->bind(function(){})
-	->get('/', function(){});
+    ->bind(function(){})
+    ->get('/', function(){});
 ```
 
 #### Route Controller
+
 A route controller object can be used with [Route Groups](#route-groups) and [Route Group Loading](#route-group-loading).
+
 ```php
 class MyController implements Lark\Router\RouteControllerInterface
 {
-	public function bind(Router $router): void
-	{
-		$router->get('/users', function(){}); // "/api/users"
-	}
+    public function bind(Router $router): void
+    {
+        $router->get('/users', function(){}); // "/api/users"
+    }
 }
 
 // in routes file
 router()
-	->group('/api')
-	->controller(new MyController);
+    ->group('/api')
+    ->controller(new MyController);
 ```
 
 ### Route Actions
@@ -163,7 +166,7 @@ Route actions are executed when a route is matched. Route actions can be a calla
 ```php
 // function will be called on route match
 router()->get('/example-html', function(): string {
-	return 'hello'; // return string to output as html
+    return 'hello'; // return string to output as html
 });
 
 router()->get('/example-json', function(): array {
@@ -241,8 +244,8 @@ router()->bind(function(){});
 router()->bind(function(){}, [MyClass::class, 'myMethod']);
 // array of actions
 router()->bind([
-	function(){},
-	function(){}
+    function(){},
+    function(){}
 ]);
 ```
 
@@ -265,14 +268,16 @@ Middleware can be defined to be used only on a specific route group. Route group
 
 ```php
 router()
-	// group([base-route], [...actions])
-	->group('/api/users', function(){})
-	->get('/', function(){}) // "/api/users"
-	->get('/{id}', function($id){}) // "/api/users/{id}"
+    // group([base-route], [...actions])
+    ->group('/api/users', function(){})
+    ->get('/', function(){}) // "/api/users"
+    ->get('/{id}', function($id){}) // "/api/users/{id}"
 ```
 
 #### After Middleware
+
 After middlware always runs after a route action has been called, even if the route does not exist.
+
 ```php
 router()->after(function(){}, [MyClass::class, 'myMethod']);
 ```
@@ -329,12 +334,12 @@ Exceptions can be handled using the exception handler.
 
 try
 {
-	// run app
-	app()->run();
+    // run app
+    app()->run();
 }
 catch (Throwable $th)
 {
-	new App\ExceptionHandler($th);
+    new App\ExceptionHandler($th);
 }
 ```
 
@@ -345,32 +350,33 @@ namespace App;
 use Throwable;
 class ExceptionHandler
 {
-	public function __construct(Throwable $th)
-	{
-		\Lark\Exception::handle($th, function (array $info) use ($th)
-		{
-			$code = $th->getCode();
-			if (!$code)
-			{
-				$code = 500;
-			}
+    public function __construct(Throwable $th)
+    {
+        \Lark\Exception::handle($th, function (array $info) use ($th)
+        {
+            $code = $th->getCode();
+            if (!$code)
+            {
+                $code = 500;
+            }
 
-			// log error
-			// ...
+            // log error
+            // ...
 
-			// respond with error
-			res()
-				->code($code)
-				->json($info);
+            // respond with error
+            res()
+                ->code($code)
+                ->json($info);
 
-			// --or-- continue to throw exception
-			throw $th;
-		});
-	}
+            // --or-- continue to throw exception
+            throw $th;
+        });
+    }
 }
 ```
 
 ## Debugger
+
 `Lark\Debugger` can be used for debugging. The helper functions [`debug()`](#helper-debug) and [`x()`](#helper-x) are available.
 
 ```php
@@ -378,12 +384,12 @@ use Lark\Debugger;
 
 // append debugger info
 Debugger::append(['some' => 'info'])
-	->name('Test info') // this will be displayed as title (optional)
-	->group('test'); // this will group info together (optional)
+    ->name('Test info') // this will be displayed as title (optional)
+    ->group('test'); // this will group info together (optional)
 
 Debugger::append(['more' => 'info'])
-	->name('More test info')
-	->group('test');
+    ->name('More test info')
+    ->group('test');
 
 Debugger::dump(); // dump all debugger info and exit
 // or use:
@@ -397,11 +403,13 @@ Framework configuration and bindings can be set with the `use()` method.
 ### Debugging
 
 Enable Lark internal append debugger info for debugger dump.
+
 ```php
 app()->use('debug.dump', true);
 ```
 
 Enable Lark internal debug logging.
+
 ```php
 app()->use('debug.log', true);
 ```
@@ -437,6 +445,7 @@ $db = db('dbName$collectionName');
 $db2 = db('myconn$dbName$collectionName');
 // or: $db = db('myConn2', 'dbName', 'collectionName');
 ```
+
 > Read more in [Database](#database) and helper function [`db()`](#helper-db)
 
 ### Database Global Options
@@ -444,6 +453,7 @@ $db2 = db('myconn$dbName$collectionName');
 Database global options can be set using `db.options`. All default option values are listed below.
 
 ```php
+use MongoDB\Driver\ReadConcern;
 use MongoDB\Driver\WriteConcern;
 
 app()->use('db.options', [
@@ -452,14 +462,17 @@ app()->use('db.options', [
     'debug.dump' => false, // will include all database calls/context in debugger dumper
     'debug.log' => false, // add debug level database messages to logger
     'find.limit' => 10_000, // find "limit" for find options
+    'read.concern' => new ReadConcern, // MongoDB read concern
     'write.concern' => new WriteConcern(WriteConcern::MAJORITY) // MongoDB write concern
 ]);
 ```
+
 > Read more about Write Concern in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/write-concern/) and in the [PHP docs](https://www.php.net/manual/en/class.mongodb-driver-writeconcern.php)
 
 ### Database Sessions
 
 Sessions can be stored in the database using a `Lark\Model` object.
+
 ```php
 app()->use('db.session', new App\Model\Session);
 ```
@@ -519,7 +532,8 @@ $data = req()->jsonArray();
 // request JSON must be an object or 400 response is sent
 $data = req()->jsonObject();
 ```
->  If HTTP header `Content-Type: application/json` does not exist for any JSON methods, an automatic response with HTTP status code `400` and JSON body `{"message": "Invalid JSON: [reason]"}` will be sent.
+
+> If HTTP header `Content-Type: application/json` does not exist for any JSON methods, an automatic response with HTTP status code `400` and JSON body `{"message": "Invalid JSON: [reason]"}` will be sent.
 
 Individual JSON fields can also be accessed with sanitizing.
 
@@ -528,7 +542,7 @@ Individual JSON fields can also be accessed with sanitizing.
 $name = req()->jsonField('name')->string();
 if(req()->jsonField('contact.email')->has())
 {
-	$email = req()->jsonField('contact.email')->email();
+    $email = req()->jsonField('contact.email')->email();
 }
 ```
 
@@ -537,11 +551,11 @@ if(req()->jsonField('contact.email')->has())
 ```php
 if(req()->isMethod('POST'))
 {
-	$name = req()->input('name')->string();
-	if(req()->input('email')->has())
-	{
-		$email = req()->input('email')->email();
-	}
+    $name = req()->input('name')->string();
+    if(req()->input('email')->has())
+    {
+        $email = req()->input('email')->email();
+    }
 }
 ```
 
@@ -550,9 +564,9 @@ if(req()->isMethod('POST'))
 ```php
 // request "/?id=5&name=Shay"
 print_r([
-	'id' => req()->query('id')->integer(),
-	// use "default" as value if query "name" does not exist
-	'name' => req()->query('name', 'default')->string()
+    'id' => req()->query('id')->integer(),
+    // use "default" as value if query "name" does not exist
+    'name' => req()->query('name', 'default')->string()
 ]); // Array ( [id] => 5 [name] => Shay )
 ```
 
@@ -561,7 +575,7 @@ Request cookie example.
 ```php
 if(req()->cookie('myCookie')->has())
 {
-	var_dump( req()->cookie('myCookie')->string() );
+    var_dump( req()->cookie('myCookie')->string() );
 }
 ```
 
@@ -574,9 +588,10 @@ app()->session->set('user.id', 5); // creates session data: [user => [id => 5]]
 // ...
 if(app()->session->has('user.id'))
 {
-	$userId = app()->session->get('user.id');
+    $userId = app()->session->get('user.id');
 }
 ```
+
 > Sessions can be stored in the database by using `Lark\Database\Session::handler()`
 
 `Lark\Request\SessionFlash` can be used to store short-term data where the data is available from when set through the following request, example:
@@ -650,10 +665,10 @@ Session methods `clear()`, `get()`, `has()` and `set()` all use dot notation for
 ```php
 // set header, status code 200, content-type and send JSON response
 res()
-	->header('X-Test', 'value')
-	->code(Lark\Response::HTTP_OK)
-	->contentType('application/json') // not required when using json()
-	->json(['ok' => true]);
+    ->header('X-Test', 'value')
+    ->code(Lark\Response::HTTP_OK)
+    ->contentType('application/json') // not required when using json()
+    ->json(['ok' => true]);
 // {"ok": true}
 ```
 
@@ -670,7 +685,6 @@ res()
 - `redirect(string $location, bool $statusCode301 = false)` - send redirect
 - `send($data)` - respond with raw data payload
 - `code(int $code): Lark\Response` - response status code setter
-
 
 # Database
 
@@ -691,10 +705,11 @@ $db = db('myDb$users');
 ```
 
 #### Insert Documents
+
 ```php
 // insert documents
 $docIds = $db->insert([
-	['name' => 'Test', 'role' => 'admin'],
+    ['name' => 'Test', 'role' => 'admin'],
     ['name' => 'Test2', 'role' => 'admin']
 ]);
 // Array ( [0] => 62ba4fd034faaf6fc132ef54 [1] => 62ba4fd034faaf6fc132ef55 )
@@ -704,6 +719,7 @@ $docId = $db->insertOne(['name' => 'Test3', 'role' => 'readonly']);
 ```
 
 #### Find Documents
+
 ```php
 // find documents
 $docs = $db->find(['role' => 'admin']);
@@ -724,6 +740,7 @@ $doc = $db->findId('62ba4fd034faaf6fc132ef54');
 ```
 
 #### Update Documents
+
 ```php
 // update documents
 $affected = $db->update(['role' => 'admin'], ['role' => 'admin2']);
@@ -743,6 +760,7 @@ $newDoc = $db->updateOne(['name' => 'Test2'], ['role' => 'admin']);
 ```
 
 #### Replace Documents
+
 ```php
 // replace bulk
 $docIds = $db->replaceBulk([
@@ -760,6 +778,7 @@ $newDoc = $db->replaceOne(['name' => 'Test2222'], ['name' => 'Test2', 'role' => 
 ```
 
 #### Delete Documents
+
 ```php
 // delete documents (note: filter cannot be empty)
 $affected = $db->delete(['role' => 'admin']);
@@ -775,6 +794,7 @@ $affected = $db->deleteAll();
 ```
 
 #### Collection Field Methods
+
 ```php
 // create a new field
 // set default value to empty array
@@ -791,8 +811,8 @@ $exists = $db->collectionField('tags')->exists(false);
 
 // remove value "mytag" from field "tags" array
 $affected = $db->collectionField('tags')->pull(
-	['id' => '62ba4fd034faaf6fc132ef54'],
-	'mytag'
+    ['id' => '62ba4fd034faaf6fc132ef54'],
+    'mytag'
 );
 
 // append values "mytag1" and "mytag2" to field "tags" array
@@ -800,16 +820,18 @@ $affected = $db->collectionField('tags')->pull(
 // don't already exists in the array
 // use $unique=false to always append
 $affected = $db->collectionField('tags')->push(
-	['id' => '62ba4fd034faaf6fc132ef54'],
-	['mytag1', 'mytag2']
+    ['id' => '62ba4fd034faaf6fc132ef54'],
+    ['mytag1', 'mytag2']
 );
 
 // rename a field
 $affected = $db->collectionField('tags')->rename('tagsNew');
 ```
+
 > Use dot notation for nested field names like `field1.field2`
 
 ### Database Methods
+
 - `collectionField(string $field): Database\Field` - collection field object getter
 - `count(array $filter = [], array $options = []): int` - count documents matching filter
 - `delete(array $filter, array $options = []): int` - delete documents matching filter
@@ -836,6 +858,7 @@ $affected = $db->collectionField('tags')->rename('tagsNew');
 - `updateOne(array $filter, $update, array $options = []): int` - update single document matching filter
 
 #### Database Field Methods
+
 - `create($defaultValue = null): int` - create field with default value
 - `delete(): int` - delete collection field
 - `exists(bool $allDocs = true): bool` - check if field exists or checks if field exists on any document if `!$allDocs`
@@ -844,7 +867,9 @@ $affected = $db->collectionField('tags')->rename('tagsNew');
 - `rename(string $newName): int` - rename field
 
 ## Schema
+
 `Lark\Schema` is used to create schemas for creating entities, entity validation and database collection creation.
+
 ```php
 use Lark\Schema;
 $schema = new Schema([
@@ -854,13 +879,13 @@ $schema = new Schema([
     ],
     // or create multiple indexes
     // '$indexes' => [
-    //	['username' => 1, '$name' => 'idxUsername', '$unique' => true],
-    //	['name' => 1, 'age' => 1, '$name' => 'idxNameAge']
+    //    ['username' => 1, '$name' => 'idxUsername', '$unique' => true],
+    //    ['name' => 1, 'age' => 1, '$name' => 'idxNameAge']
     // ],
-    
+
     // auto database projection (filter password by default)
     '$filter' => ['password' => 0],
-    
+
     // schema fields
     'name' => ['string', 'notEmpty'],
     'username' => ['string', 'notEmpty'],
@@ -869,21 +894,27 @@ $schema = new Schema([
     'isAdmin' => ['bool', 'notNull', ['default' => false]]
 ]);
 ```
+
 Schema uses [Validation Types & Rules](#validation-types--rules) for field definitions.
+
 > Options for in `$index` and `$indexes` are any field starting with `$`, like `$unique`, and more options can be found in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/method/db.collection.createIndex/#options)
 
 Default field values can also be set dynamically. For nested fields use dot notation like `field.nestedfield`.
+
 ```php
 $schema->default('isAdmin', false);
 ```
+
 Field value callbacks can be used. For nested fields use dot notation like `field.nestedfield`.
+
 ```php
 $schema->apply('name', function($name): string {
-	return strtoupper($name);
+    return strtoupper($name);
 });
 ```
 
 ## Model
+
 `Lark\Model` is a model: a way to simplify database calls and creating/validating entities.
 
 ```php
@@ -893,31 +924,39 @@ use Lark\Schema;
 
 class User extends Model
 {
-	const DBS = 'default$app$users';
-	public static function schema(): Schema
-	{
-		return new Schema([
-			'name' => ['string', 'notEmpty'],
-			'age' => ['int', 'notEmpty'],
-			'isAdmin' => ['bool', 'notNull', ['default' => false]]
-		]);
-	}
+    const DBS = 'default$app$users';
+    public static function &schema(): Schema
+    {
+        static $schema;
+
+        if(!$schema)
+        {
+            $schema = new Schema([
+                'name' => ['string', 'notEmpty'],
+                'age' => ['int', 'notEmpty'],
+                'isAdmin' => ['bool', 'notNull', ['default' => false]]
+            ]);
+        }
+
+        return $schema;
+    }
 }
 ```
+
 The `App\Model\User` class can be used for creating an entity and validation.
 
 ```php
 $user = (new App\Model\User)->make([
-	'name' => 'Bob',
-	'age' => 25
+    'name' => 'Bob',
+    'age' => 25
 ]);
 var_dump($user);
 // array(3) { ["name"]=> string(3) "Bob" ["age"]=> int(25) ["isAdmin"]=> bool(false) }
 
 // or an array can be used
 $user = (new App\Model\User)->makeArray([
-	['name' => 'Bob', 'age' => 25],
-	['name' => 'Jane', 'age' => 21]
+    ['name' => 'Bob', 'age' => 25],
+    ['name' => 'Jane', 'age' => 21]
 ]);
 ```
 
@@ -926,7 +965,7 @@ The `$requireId` argument can be set to `true` to require any field using the `i
 ```php
 // schema: ['id' => ['string', 'id'], 'name' => ['string', 'notEmpty']]
 $user = (new App\Model\User)->make([
-	'name' => 'Bob'
+    'name' => 'Bob'
 ], /* $requireId */ true);
 // throws Lark\Validator\ValidatorException:
 // Validation failed: "User.id" must be a string
@@ -936,13 +975,15 @@ The `$partial` argument can be set to `true` to allow missing fields that can be
 
 ```php
 $user = (new App\Model\User)->make([
-	'name' => 'Bob'
+    'name' => 'Bob'
 ], /* $requireId */ false, /* $partial */ true);
 var_dump($user); // array(1) { ["name"]=> string(3) "Bob" }
 ```
+
 > The `$requireId` and `$partial` arguments can be used together to require IDs and allow partial documents
 
 The `Model::db()` method can be used to access the Model database collection (`Model::DBS` must be set).
+
 ```php
 // ...
 class Model extends Model
@@ -960,8 +1001,279 @@ $user = (new App\Model\User)->get('62ba4fd034faaf6fc132ef55');
 // external calls: get documents
 $docs = (new \App\Model\User)->db()->find(['role' => 'admin']);
 ```
+
 > Important: Model classes shouldn't have any required parameters in their `Model::__construct()` method, because the Models are automatically instantiated when using model/database binding, and any required parameters will not be present
 
+### Database Model Schema Constraints
+
+Database model schema constraints can be used as database constraints on references like verifying foreign keys and delete cascades.
+
+#### Ref Foreign Key Constraint
+
+The `$ref:fk` constraint verifies foreign keys, can be set in any model schema and is used with the `Database` methods: `insert()`, `insertOne()`, `replaceBulk()`, `replaceId()`, `replaceOne()`, `update()`, `updateBulk()`, `updateId()` and `updateOne()`.
+
+```php
+class UserLog extends Model
+{
+    const DBS = 'default$app$users.log';
+    public static function &schema(): Schema
+    {
+        static $schema;
+
+        if(!$schema)
+        {
+            $schema = new Schema([
+                '$ref:fk' => [
+                    // collection => [localField => foreignField, ...]
+                    'users' => ['userId' => 'id']
+                ],
+                'id' => ['string', 'id'],
+                'userId' => ['string', 'notEmpty'],
+                'message' => ['string', 'notEmpty']
+            ]);
+        }
+
+        return $schema;
+    }
+}
+```
+
+Example document in `users.log`:
+
+```
+{
+    "id": "abc",
+    "userId": "62ba4fd034faaf6fc132ef54",
+    "message": "test"
+}
+```
+
+Now when a model database insert/replace/update method is called the `$ref:fk` constraint above will verify the collection `users.log` field `userId` value exists as a foreign key in the `users` collection field `id` (`_id`).
+
+> If foreign key constraint verification fails a `Lark\Database\Constraint\DatabaseConstraintException` exception will be thrown with a message like `Failed to insert or update document(s), foreign key constraint failed for "userId"`
+
+> The `$ref:fk` foreign fields (`foreignField`) must always be a MongoDB `ObjectId` and foreign key verification on any other type will fail.
+
+> The `$ref:fk` constraint will always verify a foreign key, even when the local field value is `null`, but this can be disabled by using the `nullable$` prefix on the local field name, like `nullable$userId`, which means all local field null values will not have the foreign key verified.
+
+The `$ref:fk` constraint can also be used on an array of foreign keys in an array:
+
+```php
+// class UserGroup (model)
+$schema = new Schema([
+    '$ref:fk' => [
+        // collection => [localField => foreignField, ...]
+        'users' => ['users.$' => 'id']
+    ],
+    // ...
+]);
+```
+
+Example document in `users.groups`:
+
+```
+{
+    "id": "abc",
+    "name": "group name",
+    "users": ["62ba4fd034faaf6fc132ef54", "62ba4fd034faaf6fc132ef55"]
+}
+```
+
+Now when a model database insert/replace/update method is called the `$ref:fk` constraint above will verify each value in the collection `users.groups` field `users` array exists as a foreign key in the `users` collection field `id` (`_id`).
+
+The `$ref:fk` constraint can also be used on objects in an array that have foreign keys:
+
+```php
+// class UserAllowed (model)
+$schema = new Schema([
+    '$ref:fk' => [
+        // collection => [localField => foreignField, ...]
+        'users' => ['users.$.id' => 'id']
+    ],
+    // ...
+]);
+```
+
+Example document in `users.allowed`
+
+```
+{
+    "id": "abc",
+    "role": "admin"
+    "users": [
+        {"id": "62ba4fd034faaf6fc132ef54", "name": "test"}
+        {"id": "62ba4fd034faaf6fc132ef55", "name": "test2"}
+    ]
+}
+```
+
+Now when a model database insert/replace/update method is called the `$ref:fk` constraint above will verify the collection `users.allowed` field `users` array to ensure each object field `id` value exists as a foreign key in the `users` collection field `id` (`_id`).
+
+The `$ref:fk` constraint can be used with multiple collections and fields:
+
+```php
+$schema = new Schema([
+    '$ref:fk' => [
+        // collection => [localField => foreignField, ...]
+        'users' => [
+            'userId' => 'id',
+            'users.$' => 'id',
+            'usersAllowed.$.id' => 'id'
+        ]
+    ],
+    // ...
+]);
+```
+
+The `$ref:fk` constraint can also be used with the same model:
+
+```php
+// class User (model)
+$schema = new Schema([
+    '$ref:fk' => [
+        // allow managerId to be null (no manager)
+        // verify FK users.id exists when users.managerId exists
+        'users' => ['nullable$managerId' => 'id']
+    ],
+    'id' => ['string', 'id'],
+    'managerId' => 'string'
+]);
+```
+
+#### Ref Delete Constraint
+
+The `$ref:delete` constraint allows delete cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
+
+```php
+class User extends Model
+{
+    const DBS = 'default$app$users';
+    public static function &schema(): Schema
+    {
+        static $schema;
+
+        if(!$schema)
+        {
+            $schema = new Schema([
+                '$ref:delete' => [
+                    // collection => [foreign fields]
+                    'users.log' => ['userId']
+                ],
+                'id' => ['string', 'id'],
+                'name' => ['string', 'notEmpty']
+            ]);
+        }
+
+        return $schema;
+    }
+}
+```
+
+Example document in `users.log`:
+
+```
+{
+    "id": "abc",
+    "userId": "62ba4fd034faaf6fc132ef54",
+    "message": "test"
+}
+```
+
+Now when the model database method `deleteIds()` is called the `$ref:delete` constraint above will trigger a database delete operation to delete all documents in the `users.log` collection with `userId: {$in: [ids]}`.
+
+> The equivalent in MongoDB shell would be:
+>
+> ```
+> db.users.delete( { _id: { $in: [ids] } } )
+> db.users.log.delete( { userId: { $in: [ids] } } )
+> ```
+
+The `$ref:delete` constraint can also be used to pull (`$pullAll`) IDs from an array:
+
+```php
+$schema = new Schema([
+    '$ref:delete' => [
+        // collection => [foreign fields]
+        'users.groups' => ['users.$']
+    ],
+    // ...
+]);
+```
+
+Example document in `users.groups`:
+
+```
+{
+    "id": "abc",
+    "name": "group name",
+    "users": ["62ba4fd034faaf6fc132ef54", "62ba4fd034faaf6fc132ef55"]
+}
+```
+
+Now when the model database method `deleteIds()` is called the `$ref:delete` constraint above will trigger a database update operation to `$pullAll` IDs in the collection `users.groups` field `users`.
+
+> The equivalent in MongoDB shell would be:
+>
+> ```
+> db.users.delete( { _id: { $in: [ids] } } )
+> db.users.groups.updateMany(
+>     { users: { $in: [ids] } },
+>     { $pullAll: { users: [ids] } },
+>     { multi:true }
+> )
+> ```
+
+The `$ref:delete` constraint can also be used to pull (`$pull`) objects from an array based on an object field value:
+
+```php
+$schema = new Schema([
+    '$ref:delete' => [
+        // collection => [foreign fields]
+        'users.allowed' => ['users.$.id']
+    ],
+    // ...
+]);
+```
+
+Example document in `users.allowed`
+
+```
+{
+    "id": "abc",
+    "role": "admin"
+    "users": [
+        {"id": "62ba4fd034faaf6fc132ef54", "name": "test"}
+        {"id": "62ba4fd034faaf6fc132ef55", "name": "test2"}
+    ]
+}
+```
+
+Now when the model database method `deleteIds()` is called the `$ref:delete` constraint above will trigger a database update operation to `$pull` all objects in collection `users.groups` field `users` based on object field `id` value.
+
+> The equivalent in MongoDB shell would be:
+>
+> ```
+> db.users.delete( { _id: { $in: [ids] } } )
+> db.users.allowed.updateMany(
+>     { users.id: { $in: [ids] } },
+>     { $pull: { users: { id: { $in: [ids] } } } },
+>     { multi:true }
+> )
+> ```
+
+The `$ref:delete` constraint can be used with multiple collections and fields:
+
+```php
+$schema = new Schema([
+    '$ref:delete' => [
+        // collection => [foreign fields]
+        'users.log' => ['userId', 'userId2'],
+        'users.groups' => ['users.$'],
+        'users.allowed' => ['users.$.id']
+    ],
+    // ...
+]);
+```
 
 ## Validator
 
@@ -971,15 +1283,15 @@ $docs = (new \App\Model\User)->db()->find(['role' => 'admin']);
 use Lark\Validator;
 
 $isValid = (new Validator([
-	// data
-	'name' => 'Bob',
-	'age' => 25
+    // data
+    'name' => 'Bob',
+    'age' => 25
 ], [
-	// schema
-	'name' => ['string', 'notEmpty'],
-	'age' => ['int', 'notNull'],
-	'phone' => null, // no type (any type allowed), optional
-	'title' => 'string' // string, optional
+    // schema
+    'name' => ['string', 'notEmpty'],
+    'age' => ['int', 'notNull'],
+    'phone' => null, // no type (any type allowed), optional
+    'title' => 'string' // string, optional
 ]))->validate(); // true
 ```
 
@@ -987,9 +1299,9 @@ Assertion can be used during validation.
 
 ```php
 (new Validator([
-	'name' => null
+    'name' => null
 ], [
-	'name' => ['string', 'notNull']
+    'name' => ['string', 'notNull']
 ]))->assert();
 // throws Lark\Validator\ValidatorException:
 // Validation failed: "name" must be a string
@@ -1000,10 +1312,10 @@ Make entities with validation.
 ```php
 // validation will pass because no field is required
 var_dump(
-	(new Validator([], [
-		'name' => ['string'],
-		'age' => ['int']
-	]))->make()
+    (new Validator([], [
+        'name' => ['string'],
+        'age' => ['int']
+    ]))->make()
 );
 // array(2) { ["name"]=> NULL ["age"]=> NULL }
 ```
@@ -1026,9 +1338,9 @@ The rule `voidable` can be used for any fields that can be missing.
 - `boolean` (or `bool`) - must be `boolean` or `null`
   - `notNull` - must be `boolean`
 - `datetime` - must be an instance of `DateTime` or `null`
-	- `notNull` - must be instance of `DateTime`
+  - `notNull` - must be instance of `DateTime`
 - `dbdatetime` - must be an instance of `MongoDB\BSON\UTCDateTime` or `null`
-	- `notNull` - must be instance of `MongoDB\BSON\UTCDateTime`
+  - `notNull` - must be instance of `MongoDB\BSON\UTCDateTime`
 - `float` - must be a `float` or `null`
   - `between` - must be between both values `[between => [x, y]]`
   - `max` - must be a maximum value of `[max => x]`
@@ -1055,11 +1367,11 @@ The rule `voidable` can be used for any fields that can be missing.
 - `string` (or `str`) - must be a `string` or `null`
   - `allowed` - value must be allowed `[allowed => [...]]`
   - `alnum` - must only contain alphanumeric characters
-	- or, must only contain alphanumeric characters and whitespaces `[alnum => true]`
+  - or, must only contain alphanumeric characters and whitespaces `[alnum => true]`
   - `alpha` - must only contain alphabetic characters
-	- or, must only contain alphabetic characters and whitespaces `[alpha => true]`
+  - or, must only contain alphabetic characters and whitespaces `[alpha => true]`
   - `contains` - must contain value `[contains => x]`
-	- or, must contain value (case-insensitive) `[contains => [x, true]]`
+  - or, must contain value (case-insensitive) `[contains => [x, true]]`
   - `email` - must be a valid email address
   - `hash` - hashes must be equal (timing attack safe) `[hash => x]`
   - `id` - must be an `string` when `ENTITY_FLAG_ID` flag is set
@@ -1084,37 +1396,70 @@ Nested fields can be defined using the `fields` property.
 
 ```php
 $isValid = (new Validator([
-	// data
-	'name' => 'Bob',
-	'contact' => [
-		'email' => 'bob@example.com',
-		'phone' => [
-			'cell' => '555-5555',
-			'office' => '555-6666'
-		]
-	]
+    // data
+    'name' => 'Bob',
+    'contact' => [
+        'email' => 'bob@example.com',
+        'phone' => [
+            'cell' => '555-5555',
+            'office' => '555-6666'
+        ]
+    ]
 ], [
-	// schema
-	'name' => ['string', 'notEmpty'],
-	'contact' => [
-		'array',
-		[
-			'fields' => [
-				'email' => ['string', 'email'],
-				'phone' => [
-					'array',
-					[
-						'fields' => [
-							'cell' => 'string',
-							'office' => 'string'
-						]
-					]
-				]
-			]
-		]
-	]
+    // schema
+    'name' => ['string', 'notEmpty'],
+    'contact' => [
+        'array',
+        [
+            'fields' => [
+                'email' => ['string', 'email'],
+                'phone' => [
+                    'array',
+                    [
+                        'fields' => [
+                            'cell' => 'string',
+                            'office' => 'string'
+                        ]
+                    ]
+                ]
+            ]
+        ]
+    ]
 ]))->validate(); // true
 ```
+
+### Nested Schemas
+
+Nested schemas can be defined for an array of arrays or objects using the `schema:array` or `schema:object` property.
+
+```php
+$isValid = (new Validator([
+    'name' => 'test',
+    'tags' => [
+        // these must be arrays because "schema:array" is used
+        // if "schema:object" is used these must be objects
+        ['id' => '1', 'name' => 'test2'],
+        ['id' => 2, 'name' => 'test3'],
+    ]
+], [
+    'name' => ['string', 'notEmpty'],
+    'tags' => [
+        'array', 'notEmpty',
+        [
+            'schema:array' => [
+                'id' => ['int', 'notNull'],
+                'name' => 'string'
+            ]
+        ]
+    ]
+]))->assert();
+// throws Lark\Validator\ValidatorException:
+// Validation failed: "tags.0.id" must be an integer or null
+```
+
+> In the example above if the schema rule `notEmpty` is not used before the `schema:array` or `schema:object` property, and the array of arrays or objects is empty, no rules will be validated/asserted.
+
+> Partial documents are not allowed inside nested schema objects or arrays
 
 ### Assert Callback
 
@@ -1122,16 +1467,16 @@ A callback can be used with the `assert()` method.
 
 ```php
 (new Validator([
-	'name' => null
+    'name' => null
 ], [
-	'name' => ['string', 'notNull']
+    'name' => ['string', 'notNull']
 ]))->assert(function(string $field, string $message, string $name = null){
-	// handle error
-	//...
+    // handle error
+    //...
 
-	// return true to halt
-	// return false to continue to throw validation exception
-	return true;
+    // return true to halt
+    // return false to continue to throw validation exception
+    return true;
 });
 ```
 
@@ -1147,31 +1492,31 @@ app()->use('validator.rule.string.beginWithEndWith', App\Validator\BeginWithEndW
 namespace App\Validator;
 class BeginWithEndWith extends \Lark\Validator\Rule
 {
-	private string $beginWith;
-	private string $endWith;
+    private string $beginWith;
+    private string $endWith;
 
-	protected string $message = 'must begin with value and end with value';
+    protected string $message = 'must begin with value and end with value';
 
-	public function __construct(string $beginWith, string $endWith)
-	{
-		$this->beginWith = $beginWith;
-		$this->endWith = $endWith;
-	}
+    public function __construct(string $beginWith, string $endWith)
+    {
+        $this->beginWith = $beginWith;
+        $this->endWith = $endWith;
+    }
 
-	public function validate($value): bool
-	{
-		$beginsWith = substr($value, 0, strlen($this->beginWith));
-		$endsWith = substr($value, -(strlen($this->endWith)));
+    public function validate($value): bool
+    {
+        $beginsWith = substr($value, 0, strlen($this->beginWith));
+        $endsWith = substr($value, -(strlen($this->endWith)));
 
-		return $beginsWith === $this->beginWith && $endsWith === $this->endWith;
-	}
+        return $beginsWith === $this->beginWith && $endsWith === $this->endWith;
+    }
 }
 
 // validation example
 (new Validator([
-	'alias' => '123testXYZ'
+    'alias' => '123testXYZ'
 ], [
-	'alias' => ['string', ['beginWithEndWith' => ['123', 'XYZ']]]
+    'alias' => ['string', ['beginWithEndWith' => ['123', 'XYZ']]]
 ]))->validate(); // true
 ```
 
@@ -1186,23 +1531,21 @@ app()->use('validator.rule.string.email', 'App\\Validator\\Email');
 namespace App\Validator;
 class Email extends \Lark\Validator\TypeString\Email
 {
-	public function validate($value): bool
-	{
-		// must be valid email and domain "example.com"
-		return parent::validate($value)
-			&& preg_match('/@example\.com$/i', $value) === 1;
-	}
+    public function validate($value): bool
+    {
+        // must be valid email and domain "example.com"
+        return parent::validate($value)
+            && preg_match('/@example\.com$/i', $value) === 1;
+    }
 }
 
 // validation example
 (new Validator([
-	'email' => 'test@example.com'
+    'email' => 'test@example.com'
 ], [
-	'email' => ['string', 'email']
+    'email' => ['string', 'email']
 ]))->validate(); // true
 ```
-
-
 
 ## Filter
 
@@ -1219,12 +1562,12 @@ $arr = ["one" => 1, "two" => 2, "three" => 3];
 
 // exclude filter
 print_r(
-	filter()->keys($arr, ["two" => 0])
+    filter()->keys($arr, ["two" => 0])
 ); // Array ( [one] => 1 [three] => 3 )
 
 // include filter
 print_r(
-	filter()->keys($arr, ["one" => 1, "two" => 1])
+    filter()->keys($arr, ["one" => 1, "two" => 1])
 ); // Array ( [one] => 1 [two] => 2 )
 ```
 
@@ -1237,8 +1580,6 @@ print_r(
 - `string($value, array $options = ['flags' => FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH]): string` - sanitize value with string filter
 - `url($value, array $options = []): string` - sanitize value with url filter
 
-
-
 ## HTTP Client
 
 `Lark\Http\Client` is an HTTP client.
@@ -1248,22 +1589,22 @@ use Lark\Http\Client;
 $client = new Client;
 try
 {
-	$res = $client->get('http://example.com');
-	$headers = $client->headers();
-	$statusCode = $client->statusCode();
+    $res = $client->get('http://example.com');
+    $headers = $client->headers();
+    $statusCode = $client->statusCode();
 
-	if($statusCode === 200)
-	{
-		// ok
-	}
-	else
-	{
-		// handle
-	}
+    if($statusCode === 200)
+    {
+        // ok
+    }
+    else
+    {
+        // handle
+    }
 }
 catch (Lark\Http\HttpException $ex)
 {
-	// handle request/curl error
+    // handle request/curl error
 }
 ```
 
@@ -1290,7 +1631,7 @@ Strings can also be used to send JSON.
 
 ```php
 $client = new Client([
-	'headers' => ['content-type' => 'application/json']
+    'headers' => ['content-type' => 'application/json']
 ]);
 // POST request with JSON string
 $client->post('http://example.com', json_encode(['field1' => 'value']));
@@ -1316,9 +1657,9 @@ Options for `curl` can be set.
 ```php
 use Lark\Http\Client;
 $client = new Client([
-	'curl' => [
-		CURLOPT_RESOLVE => ['test.loc:127.0.0.1']
-	]
+    'curl' => [
+        CURLOPT_RESOLVE => ['test.loc:127.0.0.1']
+    ]
 ]);
 ```
 
@@ -1326,8 +1667,8 @@ $client = new Client([
 
 - `curl` - set options for `curl` using `CURLOPT_[...]` options
 - `headers` - set HTTP headers, which can be set using two methods
-	- `['headers' => ['My-Header' => 'value']]`
-	- `['headers' => ['My-Header: value']]`
+  - `['headers' => ['My-Header' => 'value']]`
+  - `['headers' => ['My-Header: value']]`
 - `port` - set a custom port number
 - `proxy` - use an HTTP proxy
 - `redirects` - allow redirects
@@ -1335,9 +1676,10 @@ $client = new Client([
 - `url` - base URL for request methods
 - `verify` - verify peer's certificate and common name
 
-
 ## CLI
+
 `Lark\Cli` is used to create CLI apps.
+
 ```php
 // bootstrap
 // ...
@@ -1346,38 +1688,40 @@ $cli = Lark\Cli::getInstance();
 
 // add command
 $cli->command('files', 'Print files in directory')
-	->arg('dir', 'Read directory')
-	->action(function(string $dir) {
-		// print files in directory $dir
+    ->arg('dir', 'Read directory')
+    ->action(function(string $dir) {
+        // print files in directory $dir
 
-		// optional, exit with any code by returning an int
-		// return 1; // same as $cli->exit(1);
-	});
-	// or use class/method:
-	// ->action([MyClass::class, 'methodName'])
+        // optional, exit with any code by returning an int
+        // return 1; // same as $cli->exit(1);
+    });
+    // or use class/method:
+    // ->action([MyClass::class, 'methodName'])
 
 // run app
 $cli->run($_SERVER['argv']);
 ```
+
 Arguments and options can be set for a command, and each argument and option has optional settings.
+
 ```php
 // set global option (separate from command options)
 $cli->option('-d, --debug', 'Enable debug mode', function() {
-	// enable here
+    // enable here
 });
 
 $cli->command('files', 'Print files in directory')
-	->arg('dir', 'Read directory') // required by default
-	// set another optional argument that can have multiple values (array)
-	->arg('subdirs', 'Read subdirectories', ['optional', 'array'])
-	// add option for output file
-	->option('-o, --outputfile', 'Output to file')
+    ->arg('dir', 'Read directory') // required by default
+    // set another optional argument that can have multiple values (array)
+    ->arg('subdirs', 'Read subdirectories', ['optional', 'array'])
+    // add option for output file
+    ->option('-o, --outputfile', 'Output to file')
     // option test
     ->option('-t, --test', 'Run test', ['optional'])
-	// add command action
-	->action(function(string $dir, ?array $subdirs, ?string $outputfile, ?bool $isTest) {
-		var_dump($dir, $subdirs, $outputfile, $isTest);
-	});
+    // add command action
+    ->action(function(string $dir, ?array $subdirs, ?string $outputfile, ?bool $isTest) {
+        var_dump($dir, $subdirs, $outputfile, $isTest);
+    });
 
 // $ php ./app/cli.php files mydir subdir1 subdir2 --outputfile=/my/file -t
 // string(5) "mydir"
@@ -1385,7 +1729,9 @@ $cli->command('files', 'Print files in directory')
 // string(8) "/my/file"
 // bool(true)
 ```
+
 The CLI `Lark\Cli\Output` class is used for output and styling output.
+
 ```php
 $o = $cli->output();
 
@@ -1403,44 +1749,52 @@ $o->dim('Muted'); // dim text
 
 // custom style methods can be registered
 $o::register('blink', function ($text, $end = PHP_EOL) use ($out) {
-	$out->styleBlink;
-	$out->echo($text, $end);
+    $out->styleBlink;
+    $out->echo($text, $end);
 });
 $o->bink('Blinking text'); // blinking text
 
 // override existing style methods
 $o::register('error', function ($text, $end = PHP_EOL) use ($out) {
-	$out->colorRed; // text color red (instead of bg red)
-	$out->stderr($text, $end); // send to stderr
+    $out->colorRed; // text color red (instead of bg red)
+    $out->stderr($text, $end); // send to stderr
 });
 $o->error('Oops'); // red text
 ```
+
 The output `grid()` method can be used to evenly space columns.
+
 ```php
 $data = [
-	[1, "one"],
-	[2, "two"],
-	[100, "one hundred"],
-	[3, "three"],
+    [1, "one"],
+    [2, "two"],
+    [100, "one hundred"],
+    [3, "three"],
 ];
 
 $out->grid($data, ['indent' => 2]);
 ```
+
 Above example would output:
+
 ```
   1      one
   2      two
   100    one hundred
   3      three
 ```
+
 Use `confirm()` for prompting.
+
 ```php
 // "Continue? (y/N)"
 if($cli->confirm("Continue?")) // ...
 // or yes by default: "Continue? (Y/n)"
 if($cli->confirm("Continue?", true)) // ...
 ```
+
 Use `input()` for input.
+
 ```php
 // "Enter value [DEFAULT]:"
 $val = $cli->input("Enter value:", "DEFAULT");
@@ -1448,6 +1802,7 @@ $val = $cli->input("Enter value:", "DEFAULT");
 ```
 
 ### CLI Methods
+
 - `abort($status = 0)` - display command aborted message and exit app
 - `command(string $name, string $description, array $aliases = []): Command` - register a command
 - `confirm(string $question, bool $isDefaultYes = false)` - confirm yes/no
@@ -1460,17 +1815,19 @@ $val = $cli->input("Enter value:", "DEFAULT");
 - `run()` - run CLI app
 
 ### CLI Command Methods
+
 - `action($callbackOrClassArray): Command` - set command action
 - `arg(string $arg, string $description, array $options = []): Command` - set argument
-	- Options:
-		- `array` - argument with multiple values (must be last in arguments list)
-		- `default` - default value, like: `['default' => 'the value']`
-		- `optional` - argument is optional
+  - Options:
+    - `array` - argument with multiple values (must be last in arguments list)
+    - `default` - default value, like: `['default' => 'the value']`
+    - `optional` - argument is optional
 - `option(string $option, string $description = '', array $options = []): Command` -set option
-	- Options:
-		- `default` - default value, like: `['default' => 'the value']`
+  - Options:
+    - `default` - default value, like: `['default' => 'the value']`
 
 ### CLI Output Propeties
+
 - `bgBlack` - style background black
 - `bgBlue` - style background blue
 - `bgCyan` - style background cyan
@@ -1511,23 +1868,25 @@ $val = $cli->input("Enter value:", "DEFAULT");
 - `styleUnderline` - style underline
 
 ### CLI Output Methods
+
 - `dim(string $text, string $end = PHP_EOL): Output` - print dim style text
-- `echo(string $text = '', string $end = PHP_EOL): Output` - Print text to *stdout*
+- `echo(string $text = '', string $end = PHP_EOL): Output` - Print text to _stdout_
 - `error(string $text, string $end = PHP_EOL): Output` - print error text
 - `grid(array $data, array $options = []): Output` - print grid
-	- Options:
-		- `indent` - number of spaces to indent
-		- `padding` - column padding (default: `4`)
-		- `style` - apply style to column, like `['style' => ['name' => 'colorBlue']]`
+  - Options:
+    - `indent` - number of spaces to indent
+    - `padding` - column padding (default: `4`)
+    - `style` - apply style to column, like `['style' => ['name' => 'colorBlue']]`
 - `info(string $text, string $end = PHP_EOL): Output` - print info text
 - `ok(string $text, string $end = PHP_EOL): Output` - print success text
 - `warn(string $text, string $end = PHP_EOL): Output` - print warning text
 - `static register(string $name, callable $callback) ` - register style method
-- `stderr(string $text, string $end = PHP_EOL): Output` - output to *stderr*
-- `stdout(string $text = '', string $end = PHP_EOL): Output` - output to *stdout*
+- `stderr(string $text, string $end = PHP_EOL): Output` - output to _stderr_
+- `stdout(string $text = '', string $end = PHP_EOL): Output` - output to _stdout_
 - `styleIndent(int $number): Output` - indent style
 
 ## File
+
 `Lark\File` is used to handle files.
 
 ```php
@@ -1536,11 +1895,12 @@ use Lark\File;
 $file = new File('./my-file.txt');
 if($file->write('contents'))
 {
-	// ...
+    // ...
 }
 
 $contents = $file->read();
 ```
+
 `Lark\Json\File` is used for JSON files.
 
 ```php
@@ -1552,15 +1912,17 @@ $file->write(['name' => 'test']);
 
 try
 {
-	$value = $file->read();
+    $value = $file->read();
 }
 catch(LarkException $ex)
 {
-	// exception is throw on JSON decode error
-	echo 'Failed to decode JSON file: ' . $ex->getMessage();
+    // exception is throw on JSON decode error
+    echo 'Failed to decode JSON file: ' . $ex->getMessage();
 }
 ```
+
 ### File Methods
+
 - `delete(): bool` - delete a file
 - `exists(): bool` - check if file exists
 - `existsOrException()` - if file does not exist throw exception
@@ -1569,7 +1931,9 @@ catch(LarkException $ex)
 - `write($data, $append = false, $lock = true): bool` - write file contents
 
 ## Timer
+
 `Lark\Timer` works as a timer.
+
 ```php
 $timer = new Lark\Timer;
 
@@ -1588,16 +1952,21 @@ echo $timer->elapsed(); // 3.5018s
 ```
 
 ## Helpers
+
 Helpers are global helper functions.
 
 ### Helper `app()`
+
 Access the main `App` instance using the `app()` function.
+
 ```php
 app()->use('[...]');
 ```
 
 ### Helper `db()`
+
 The `db()` function is a database collection instance helper.
+
 ```php
 // when using default connection ID
 // "[database]$[collection]"
@@ -1614,10 +1983,13 @@ $db = db('myDb', 'app', 'users');
 // when using a App\Model class with DBS (database string)
 $db = db(App\Model\User::class);
 ```
+
 > Read more in [Database Connections](#database-connections)
 
 ### Helper `db_datetime()`
+
 The `db_datetime()` function returns a `MongoDB\BSON\UTCDateTime` object.
+
 ```php
 $dbDt = db_datetime();
 $dt = $dbDt->toDateTime(); // DateTime object
@@ -1627,7 +1999,9 @@ $dbDt = db_datetime(strtotime('-1 day') * 1000);
 ```
 
 ### Helper `debug()`
+
 The `debug()` function is a debugger and logging helper. When called the `debug()` function will append the debugger info and send to logger (`Logger::debug()`).
+
 ```php
 debug('test');
 // same as:
@@ -1646,19 +2020,25 @@ debug('test', ['info' => 'here'], 'name');
 // Debugger::append(['info' => 'here'])->name('test')->group('name');
 // (new Logger('name'))->debug('test', ['info' => 'here']);
 ```
+
 > Also see [`x()`](#helper-x) helper function
 
 > Read more in [Debugger](#debugger) and [Logging](#logging)
 
 ### Helper `env()`
+
 The `env()` function is an environment variables helper.
+
 ```php
 $dbName = env('DB_NAME');
 ```
+
 > Read more in [Environment Configuration](#environment-configuration)
 
 ### Helper `f()`
+
 The `f()` function returns a formatted string.
+
 ```php
 echo f('First value: {}, second value: {}', 'one', 'two');
 // First value: one, second value: two
@@ -1674,7 +2054,9 @@ echo f('Name: {name}, age: {age}', ['age' => 25, 'name' => 'Test']);
 ```
 
 ### Helper `halt()`
+
 The `halt()` function can be used to immediately return an HTTP response status code and optional JSON message.
+
 ```php
 halt(404, 'Resource not found');
 // returns HTTP response status code 404
@@ -1688,21 +2070,28 @@ halt(500);
 ```
 
 ### Helper `logger()`
+
 Access a `Logger` instance using the `logger()` function.
+
 ```php
 logger('channel')->info('message', ['context']);
 ```
+
 > Read more in [Logging](#logging)
 
 ### Helper `p()`
+
 The `p()` function outputs formatted (HTML/CLI) variables.
+
 ```php
 p('test', 'this');
 p(['my' => 'array']);
 ```
 
 ### Helper `pa()`
+
 The `pa()` function is a variable printer.
+
 ```php
 pa('test', 'this', ['and' => 'this'], 'end');
 // test this
@@ -1714,37 +2103,48 @@ pa('test', 'this', ['and' => 'this'], 'end');
 ```
 
 ### Helper `req()`
+
 Access the `Lark\Request` instance using the `req()` function.
+
 ```php
 var_dump(
-	req()->path()
+    req()->path()
 );
 // string(1) "/"
 ```
+
 > Read more in [Request](#request)
 
 ### Helper `res()`
+
 Access the `Lark\Response` instance using the `res()` function.
+
 ```php
 res()->contentType('application/json');
 ```
+
 > Read more in [Response](#response)
 
 ### Helper `router()`
+
 Access the `Lark\Router` instance using the `router()` function.
+
 ```php
 router()->get('/', function() {
-	return 'home';
+    return 'home';
 });
 ```
+
 > Read more in [Routing](#routing)
 
 ### Helper `x()`
+
 The `x()` function is a debugger and dumper helper. When called the `x()` function (or `Lark\Debugger::dump()`) will dump all debugger info objects and stop execution.
+
 ```php
 x('value', ['test' => 'this']);
 ```
+
 > Also see [`debug()`](#helper-debug) helper function
 
 > Read more in [Debugger](#debugger)
-

@@ -17,7 +17,7 @@ use Lark\Map;
  *
  * @author Shay Anderson
  */
-trait Store
+trait StoreTrait
 {
 	/**
 	 * Map

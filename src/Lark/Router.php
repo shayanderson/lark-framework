@@ -325,6 +325,22 @@ class Router extends Factory\Singleton
 			return; // no group
 		}
 
+		static $requestPathBase;
+
+		if ($requestPathBase === null)
+		{
+			// '/base/...' => '/base'
+			if (($pos = strpos($this->requestPath, '/', 1)) !== false)
+			{
+				$requestPathBase = substr($this->requestPath, 0, $pos);
+			}
+			// '/base'
+			else
+			{
+				$requestPathBase = $this->requestPath;
+			}
+		}
+
 		foreach ($groupToFile as $group => $file)
 		{
 			if ($group === '/' || $group === '')
@@ -332,17 +348,18 @@ class Router extends Factory\Singleton
 				throw new RouterException('Loading route groups cannot have base route of "/"');
 			}
 
-			if ($group === substr($this->requestPath, 0, strlen($group)))
+			if ($group == $requestPathBase)
 			{
 				$filePath = DIR_ROUTES . '/' . $file . '.php';
 
 				$context = [
+					'requestPathBase' => $requestPathBase,
 					'group' => $group,
 					'file' => $file,
-					'filePath' => $filePath
+					'filePath' => $filePath,
 				];
 
-				Debugger::internal(__METHOD__, $context);
+				Debugger::internal(__METHOD__ . ' (base route matched)', $context);
 
 				if (!is_file($filePath))
 				{

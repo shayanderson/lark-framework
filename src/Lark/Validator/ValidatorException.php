@@ -17,4 +17,8 @@ namespace Lark\Validator;
  */
 class ValidatorException extends \Lark\Exception
 {
+	/**
+	 * @inheritDoc
+	 */
+	protected $code = 422;
 }

@@ -10,6 +10,10 @@ declare(strict_types=1);
 
 namespace Lark;
 
+use Lark\Database\Constraint;
+use Lark\Database\Constraint\RefDelete;
+use Lark\Database\Constraint\RefFk;
+
 /**
  * Model schema
  *
@@ -23,6 +27,13 @@ class Schema
 	 * @var array
 	 */
 	private array $callbacks;
+
+	/**
+	 * Database model schema constraints
+	 *
+	 * @var Constraint[]
+	 */
+	private array $constraints = [];
 
 	/**
 	 * Default values
@@ -102,6 +113,25 @@ class Schema
 						foreach ($schema[$field] as $idx)
 						{
 							$this->indexes[] = $idx;
+						}
+						break;
+
+					case Constraint::TYPE_REF_DELETE:
+						// db constraint ref delete
+						foreach ($schema[$field] as $coll => $fields)
+						{
+							$this->constraints[$field][] = new RefDelete($coll, $fields);
+						}
+						break;
+
+					case Constraint::TYPE_REF_FK:
+						// db constraint ref fk
+						foreach ($schema[$field] as $coll => $fields)
+						{
+							foreach ((array)$fields as $lf => $ff)
+							{
+								$this->constraints[$field][] = new RefFk($coll, $lf, $ff);
+							}
 						}
 						break;
 
@@ -193,6 +223,22 @@ class Schema
 	}
 
 	/**
+	 * Constraints by type getter
+	 *
+	 * @param string $type
+	 * @return Constraint[]
+	 */
+	public function &getConstraints(string $type): array
+	{
+		if ($this->hasConstraint($type))
+		{
+			return $this->constraints[$type];
+		}
+
+		return [];
+	}
+
+	/**
 	 * Default field value getter
 	 *
 	 * @param string $field
@@ -273,6 +319,17 @@ class Schema
 	public function hasCallback(string $field): bool
 	{
 		return isset($this->callbacks[$field]);
+	}
+
+	/**
+	 * Check if constraint exist
+	 *
+	 * @param string $type
+	 * @return boolean
+	 */
+	public function hasConstraint(string $type): bool
+	{
+		return isset($this->constraints[$type]);
 	}
 
 	/**

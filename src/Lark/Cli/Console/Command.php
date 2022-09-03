@@ -116,6 +116,8 @@ class Command
 	 *
 	 * @param string $inputName
 	 * @param string|null $inputNameSchema
+	 * @param string|null $optDbs
+	 * @param string|null $optSchemaPath
 	 * @param string|null $optTemplatePath
 	 * @param boolean|null $optUseDefaults
 	 * @param SchemaFile|null $schemaFile
@@ -124,6 +126,7 @@ class Command
 	public function model(
 		string $inputName,
 		?string $inputNameSchema,
+		?string $optDbs = null,
 		?string $optSchemaPath = null,
 		?string $optTemplatePath = null,
 		?bool $optUseDefaults = null,
@@ -163,8 +166,11 @@ class Command
 
 		///////////////////////////////////////////////////////////////////////////////////////
 		// database string
-		$dbString = null;
-		if ($optUseDefaults || $this->console->confirm('Use database in model?', true))
+		$dbString = $optDbs;
+		if (
+			!$optDbs
+			&& ($optUseDefaults || $this->console->confirm('Use database in model?', true))
+		)
 		{
 			$defaultConnId = Connection::getDefaultConnectionId();
 
@@ -296,6 +302,9 @@ class Command
 	 *
 	 * @param string $inputName
 	 * @param string|null $inputNameModel
+	 * @param string|null $optDbs
+	 * @param string|null $optModel
+	 * @param string|null $optSchemaPath
 	 * @param string|null $optTemplatePath
 	 * @param string|null $optTemplateModelPath
 	 * @param boolean|null $optUseDefaults
@@ -304,6 +313,7 @@ class Command
 	public function route(
 		string $inputName,
 		?string $inputNameModel,
+		?string $optDbs = null,
 		?string $optModel = null,
 		?string $optSchemaPath = null,
 		?string $optTemplatePath = null,
@@ -359,6 +369,7 @@ class Command
 			$modelClassName = $this->model(
 				$inputNameModel,
 				null,
+				$optDbs,
 				$optSchemaPath,
 				$optTemplateModelPath,
 				$optUseDefaults,

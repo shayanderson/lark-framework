@@ -72,7 +72,7 @@ class Convert
 	 * @param array $ids
 	 * @return array
 	 */
-	public static function &idsToObjectIds(array &$ids): array
+	public static function &idsToObjectIds(array $ids): array
 	{
 		foreach ($ids as &$id)
 		{

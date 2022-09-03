@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace Lark\Database;
 
+use MongoDB\Driver\ReadConcern;
 use MongoDB\Driver\WriteConcern;
 
 /**
@@ -27,6 +28,7 @@ class ConnectionOptions extends \Lark\Options
 	const DEBUG_DUMP = 'debug.dump';
 	const DEBUG_LOG = 'debug.log';
 	const FIND_LIMIT = 'find.limit';
+	const READ_CONCERN = 'read.concern';
 	const WRITE_CONCERN = 'write.concern';
 
 	/**
@@ -60,6 +62,11 @@ class ConnectionOptions extends \Lark\Options
 				'int',
 				'notEmpty',
 				'default' => 10_000
+			],
+			self::READ_CONCERN => [
+				'object',
+				'notNull',
+				'default' => new ReadConcern
 			],
 			self::WRITE_CONCERN => [
 				'object',

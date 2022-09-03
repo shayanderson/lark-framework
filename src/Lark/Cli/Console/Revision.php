@@ -269,7 +269,6 @@ class Revision
 			{
 				/** @var Revision $rev */
 
-				$console->output()->echo();
 				$console->output()->echo(
 					'Checking pending commits for "' . $conn . '.' . $db . '"...'
 				);
@@ -324,7 +323,6 @@ class Revision
 			}
 		}
 
-		$console->output()->echo();
 		$console->output()->echo('Done.');
 	}
 }

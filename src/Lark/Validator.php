@@ -300,9 +300,15 @@ class Validator
 	 * @param array $data
 	 * @param array $schema
 	 * @param array $parentPath
+	 * @param bool $isNestedSchema
 	 * @return array
 	 */
-	private function validateData(array $data, array $schema, array $parentPath = []): array
+	private function validateData(
+		array $data,
+		array $schema,
+		array $parentPath = [],
+		bool $isNestedSchema = false
+	): array
 	{
 		// add missing data fields from schema
 		foreach ($schema as $field => $rules)
@@ -327,8 +333,8 @@ class Validator
 					}
 				}
 
-				// missing fields allowed (partial)
-				if ($this->isPartialDoc)
+				// missing fields allowed (partial), partial docs not allowed for nested schemas
+				if ($this->isPartialDoc && !$isNestedSchema)
 				{
 					continue;
 				}
@@ -406,7 +412,7 @@ class Validator
 						$ruleParams = [$ruleParams];
 					}
 
-					if ($rule === 'fields') // nested schema
+					if ($rule === 'fields') // nested fields
 					{
 						$isObject = false;
 						if (is_object($value) || $fieldType === 'object')
@@ -423,12 +429,77 @@ class Validator
 						$data[$field] = $this->validateData(
 							$value,
 							$ruleParams,
-							array_merge($parentPath, [$field])
+							array_merge($parentPath, [$field]),
+							$isNestedSchema
 						);
 
 						if ($isObject)
 						{
 							$data[$field] = (object)$data[$field];
+						}
+
+						continue;
+					}
+
+					if ($rule == 'schema:array' || $rule == 'schema:object') // nested schema
+					{
+						if ($fieldType != 'array')
+						{
+							throw new ValidatorException(
+								'Rule "' . $rule . '" can only be used with field type "array"'
+							);
+						}
+
+						$isArray = $rule == 'schema:array';
+						$data[$field] = [];
+						$i = 0;
+						foreach (($value ?? []) as $k => $v)
+						{
+							if ($k !== $i)
+							{
+								throw new ValidatorException(
+									'Rule "' . $rule . '" can only be used with an array of '
+										. ($isArray ? 'arrays' : 'objects')
+								);
+							}
+
+							if ($isArray && !is_array($v))
+							{
+								$this->addMessage(
+									$field . '.' . $k,
+									'must be an array',
+									array_merge($parentPath)
+								);
+								return [];
+							}
+							else if (!$isArray)
+							{
+								if (!is_object($v))
+								{
+									$this->addMessage(
+										$field . '.' . $k,
+										'must be an object',
+										array_merge($parentPath)
+									);
+									return [];
+								}
+
+								$v = (array)$v;
+							}
+
+							$data[$field][$i] = $this->validateData(
+								$v,
+								$ruleParams,
+								array_merge($parentPath, [$field, $k]),
+								true
+							);
+
+							if (!$isArray)
+							{
+								$data[$field][$i] = (object)$data[$field][$i];
+							}
+
+							$i++;
 						}
 
 						continue;

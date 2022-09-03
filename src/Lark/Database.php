@@ -12,14 +12,19 @@ namespace Lark;
 
 use Lark\Database\Connection;
 use Lark\Database\ConnectionOptions;
+use Lark\Database\Constraint;
 use Lark\Database\Convert;
 use Lark\Database\DatabaseException;
 use Lark\Database\Field;
 use Lark\Logger;
 use MongoDB\BSON\ObjectId;
 use MongoDB\Collection;
+use MongoDB\Driver\Exception\CommandException;
+use MongoDB\Driver\Exception\ConnectionTimeoutException;
 use MongoDB\Driver\Command;
 use MongoDB\Driver\Cursor;
+use MongoDB\Operation\FindOneAndReplace;
+use MongoDB\Operation\FindOneAndUpdate;
 
 /**
  * Database
@@ -61,17 +66,20 @@ class Database
 	 *
 	 * @param Connection $connection
 	 * @param string $database
+	 * @param string $collection
 	 * @param Model|null $model
 	 */
-	public function __construct(Connection $connection, string $database, ?Model $model)
+	public function __construct(
+		Connection &$connection,
+		string $database,
+		string $collection,
+		?Model $model
+	)
 	{
-		$this->connection = $connection;
+		$this->connection = &$connection;
 		$this->setDatabase($database);
-
-		if ($model)
-		{
-			$this->setModel($model);
-		}
+		$this->setCollection($collection);
+		$this->model = $model;
 	}
 
 	/**
@@ -86,10 +94,10 @@ class Database
 	{
 		if (!$documents)
 		{
-			return $this->debug(0, __METHOD__ . ' ($documents is empty, nothing to do)');
+			return $this->debug([0, []], __METHOD__ . ' ($documents is empty, nothing to do)');
 		}
 
-		$this->optionsWrite($options);
+		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 		Convert::inputIdToObjectIdArray($documents);
 		$ops = [];
@@ -200,6 +208,84 @@ class Database
 	}
 
 	/**
+	 * Ref fk constraint
+	 *
+	 * @param array $documents
+	 * @return void
+	 */
+	private function constraintRefFk(array $documents): void
+	{
+		if (!$this->model->schema()->hasConstraint(Constraint::TYPE_REF_FK))
+		{
+			return;
+		}
+
+		$options = [];
+		$this->optionsReadConcern($options);
+
+		foreach ($this->model->schema()->getConstraints(Constraint::TYPE_REF_FK) as $c)
+		{
+			/** @var \Lark\Database\Constraint\RefFk $c */
+			$c->verify(
+				$this,
+				$documents,
+				$options,
+				function (
+					$results,
+					string $message,
+					array $context
+				)
+				{
+					return $this->debug($results, $message, $context);
+				}
+			);
+		}
+	}
+
+	/**
+	 * Ref delete constraint
+	 *
+	 * @param array $ids
+	 * @return integer Affected
+	 */
+	private function constraintRefDelete(array $ids): int
+	{
+		if (
+			!$this->hasModel()
+			|| !$this->model->schema()->hasConstraint(Constraint::TYPE_REF_DELETE)
+		)
+		{
+			// no ref delete constraint
+			return 0;
+		}
+
+		$options = [];
+		$this->optionsReadConcern($options);
+		$this->optionsWriteConcern($options);
+		$aff = 0;
+
+		foreach ($this->model->schema()->getConstraints(Constraint::TYPE_REF_DELETE) as $c)
+		{
+			/** @var \Lark\Database\Constraint\RefDelete $c */
+			$aff += $c->delete(
+				$this,
+				$ids,
+				$options,
+				function (
+					$results,
+					string $message,
+					array $context
+				)
+				{
+					return $this->debug($results, $message, $context);
+				}
+			);
+		}
+
+		return $aff;
+	}
+
+	/**
 	 * Count documents matching filter
 	 *
 	 * @param array $filter
@@ -208,8 +294,9 @@ class Database
 	 */
 	public function count(array $filter = [], array $options = []): int
 	{
-		$timer = new Timer;
+		$this->optionsReadConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		return $this->debug(
 			$this->collection()->countDocuments($filter, $options),
@@ -249,7 +336,7 @@ class Database
 
 			$isCreated = (bool)$res['ok'] ?? false;
 		}
-		catch (\MongoDB\Driver\Exception\CommandException $ex)
+		catch (CommandException $ex)
 		{
 			throw new DatabaseException($ex->getMessage(), $this);
 		}
@@ -334,9 +421,9 @@ class Database
 	 */
 	public function delete(array $filter, array $options = []): int
 	{
-		$this->optionsWrite($options);
-		$timer = new Timer;
+		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		if (!$filter)
 		{
@@ -372,7 +459,7 @@ class Database
 	 */
 	public function deleteAll(array $options = []): int
 	{
-		$this->optionsWrite($options);
+		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 		$aff = 0;
 
@@ -401,7 +488,7 @@ class Database
 	 */
 	public function deleteIds(array $ids, array $options = []): int
 	{
-		$this->optionsWrite($options);
+		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 
 		if (!$ids)
@@ -414,7 +501,7 @@ class Database
 				'_id' => [
 					'$in' => Convert::idsToObjectIds($ids)
 				]
-			], $options),
+			], $options) + $this->constraintRefDelete($ids),
 			__METHOD__,
 			[
 				'ids' => $ids,
@@ -433,9 +520,9 @@ class Database
 	 */
 	public function deleteOne(array $filter, array $options = []): int
 	{
-		$this->optionsWrite($options);
-		$timer = new Timer;
+		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		if (!$filter)
 		{
@@ -528,8 +615,9 @@ class Database
 	 */
 	public function find(array $filter = [], array $options = []): array
 	{
-		$timer = new Timer;
 		$this->optionsFind($options);
+		$this->optionsReadConcern($options);
+		$timer = new Timer;
 
 		Convert::inputIdToObjectId($filter);
 
@@ -613,9 +701,10 @@ class Database
 	 */
 	public function findOne(array $filter = [], array $options = []): ?array
 	{
-		$timer = new Timer;
 		$this->optionsFind($options);
+		$this->optionsReadConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		return $this->debug(
 			Convert::bsonDocToArray(
@@ -756,7 +845,7 @@ class Database
 	 */
 	public function insert(array $documents, array $options = []): array
 	{
-		$this->optionsWrite($options);
+		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 
 		if (!$documents) // avoid MongoDB exception "$documents is empty"
@@ -767,6 +856,7 @@ class Database
 		if ($this->hasModel())
 		{
 			$documents = $this->model->makeArray($documents);
+			$this->constraintRefFk($documents);
 		}
 
 		Convert::inputIdToObjectIdArray($documents);
@@ -803,9 +893,9 @@ class Database
 	 */
 	public function insertOne($document, array $options = []): ?string
 	{
-		$this->optionsWrite($options);
-		$timer = new Timer;
+		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($document);
+		$timer = new Timer;
 
 		if (!$document) // empty document
 		{
@@ -815,6 +905,7 @@ class Database
 		if ($this->hasModel())
 		{
 			$document = $this->model->make($document);
+			$this->constraintRefFk([$document]);
 		}
 
 		$id = null;
@@ -893,12 +984,30 @@ class Database
 	}
 
 	/**
-	 * Apply connection write options to write options
+	 * Apply connection read concern options
 	 *
 	 * @param array $options
 	 * @return void
 	 */
-	private function optionsWrite(array &$options): void
+	private function optionsReadConcern(array &$options): void
+	{
+		if (
+			!isset($options['readConcern'])
+			&& $this->connection()->getOptions()[ConnectionOptions::READ_CONCERN]
+		)
+		{
+			$options['readConcern'] =
+				$this->connection()->getOptions()[ConnectionOptions::READ_CONCERN];
+		}
+	}
+
+	/**
+	 * Apply connection write concern options
+	 *
+	 * @param array $options
+	 * @return void
+	 */
+	private function optionsWriteConcern(array &$options): void
 	{
 		if (
 			!isset($options['writeConcern'])
@@ -929,7 +1038,7 @@ class Database
 
 			$isOk = ($cursor->toArray()[0]->ok ?? null) == 1;
 		}
-		catch (\MongoDB\Driver\Exception\ConnectionTimeoutException $ex)
+		catch (ConnectionTimeoutException $ex)
 		{
 			$context = [
 				'connectionTimeout' => true,
@@ -950,12 +1059,13 @@ class Database
 	 */
 	public function replaceBulk(array $documents, array $options = [], $returnAffected = false)
 	{
-		$this->optionsWrite($options);
+		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 
 		if ($this->hasModel())
 		{
 			$documents = $this->model->makeArray($documents, true);
+			$this->constraintRefFk($documents);
 		}
 
 		return $this->debug(
@@ -975,24 +1085,16 @@ class Database
 	 * @param string|int $id
 	 * @param array|object $document
 	 * @param array $options
-	 * @return array|null Document
+	 * @return array|null Replaced document
 	 */
 	public function replaceId($id, $document, array $options = []): ?array
 	{
-		$this->optionsWrite($options);
-		$timer = new Timer;
-		$options = ['_rmId' => true] + $options;
-
 		if (!$id)
 		{
 			throw new DatabaseException('Invalid $id, cannot be empty');
 		}
 
-		if ($this->hasModel())
-		{
-			// add "id" field for validation
-			$document = ['id' => $id] + (array)$document;
-		}
+		$timer = new Timer;
 
 		return $this->debug(
 			$this->replaceOne(['_id' => Convert::idToObjectId($id)], $document, $options),
@@ -1012,30 +1114,25 @@ class Database
 	 * @param array $filter
 	 * @param array|object $document
 	 * @param array $options
-	 * @return array|null Document
+	 * @return array|null Replaced document
 	 */
 	public function replaceOne(array $filter, $document, array $options = []): ?array
 	{
-		$this->optionsWrite($options);
 		$this->optionsModelFilter($options);
-		$timer = new Timer;
+		$this->optionsReadConcern($options);
+		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		// return the new doc
 		$options = [
-			'returnDocument' => \MongoDB\Operation\FindOneAndReplace::RETURN_DOCUMENT_AFTER
+			'returnDocument' => FindOneAndReplace::RETURN_DOCUMENT_AFTER
 		] + $options;
 
 		if ($this->hasModel())
 		{
-			$document = $this->model->make($document, true);
-		}
-
-		if (isset($options['_rmId']))
-		{
-			unset($options['_rmId']);
-			// rm "id" field
-			unset($document['id']);
+			$document = $this->model->make($document);
+			$this->constraintRefFk([$document]);
 		}
 
 		$doc = $this->collection()->findOneAndReplace($filter, $document, $options);
@@ -1058,7 +1155,7 @@ class Database
 	 * @param string $name
 	 * @return void
 	 */
-	final public function setCollection(string $name): void
+	private function setCollection(string $name): void
 	{
 		$name = trim($name);
 
@@ -1071,23 +1168,12 @@ class Database
 	}
 
 	/**
-	 * Model object setter
-	 *
-	 * @param Model|null $model
-	 * @return void
-	 */
-	final public function setModel(?Model $model): void
-	{
-		$this->model = $model;
-	}
-
-	/**
 	 * Database name setter
 	 *
 	 * @param string $name
 	 * @return void
 	 */
-	final public function setDatabase(string $name): void
+	private function setDatabase(string $name): void
 	{
 		$name = trim($name);
 
@@ -1127,9 +1213,9 @@ class Database
 	 */
 	public function update(array $filter, $update, array $options = []): int
 	{
-		$this->optionsWrite($options);
-		$timer = new Timer;
+		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		// check for empty update
 		if (
@@ -1142,7 +1228,8 @@ class Database
 
 		if ($this->hasModel())
 		{
-			$update = $this->model->make($update, true, true);
+			$update = $this->model->make($update, false, true);
+			$this->constraintRefFk([$update]);
 		}
 
 		$aff = 0;
@@ -1179,12 +1266,13 @@ class Database
 	 */
 	public function updateBulk(array $documents, array $options = [], $returnAffected = false)
 	{
-		$this->optionsWrite($options);
+		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 
 		if ($this->hasModel())
 		{
 			$documents = $this->model->makeArray($documents, true, true);
+			$this->constraintRefFk($documents);
 		}
 
 		return $this->debug(
@@ -1208,29 +1296,13 @@ class Database
 	 */
 	public function updateId($id, $update, array $options = []): ?array
 	{
-		$this->optionsWrite($options);
-		$timer = new Timer;
-		$options = ['_rmId' => true] + $options;
-
 		if (!$id)
 		{
 			throw new DatabaseException('Invalid $id, cannot be empty');
 		}
 
-		// check for empty update
-		if (
-			is_array($update) && !$update
-			|| is_object($update) && !get_object_vars($update)
-		)
-		{
-			return $this->debug(0, __METHOD__ . ' ($update is empty, nothing to do)');
-		}
-
-		if ($this->hasModel())
-		{
-			// add "id" field for validation
-			$update = ['id' => $id] + (array)$update;
-		}
+		$this->optionsWriteConcern($options);
+		$timer = new Timer;
 
 		return $this->debug(
 			$this->updateOne(['_id' => Convert::idToObjectId($id)], $update, $options),
@@ -1254,14 +1326,15 @@ class Database
 	 */
 	public function updateOne(array $filter, $update, array $options = []): ?array
 	{
-		$this->optionsWrite($options);
 		$this->optionsModelFilter($options);
-		$timer = new Timer;
+		$this->optionsReadConcern($options);
+		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($filter);
+		$timer = new Timer;
 
 		// return the new doc
 		$options = [
-			'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER
+			'returnDocument' => FindOneAndUpdate::RETURN_DOCUMENT_AFTER
 		] + $options;
 
 		// check for empty update
@@ -1270,19 +1343,13 @@ class Database
 			|| is_object($update) && !get_object_vars($update)
 		)
 		{
-			return $this->debug(0, __METHOD__ . ' ($update is empty, nothing to do)');
+			return $this->debug(null, __METHOD__ . ' ($update is empty, nothing to do)');
 		}
 
 		if ($this->hasModel())
 		{
-			$update = $this->model->make($update, true, true);
-		}
-
-		if (isset($options['_rmId']))
-		{
-			unset($options['_rmId']);
-			// rm "id" field
-			unset($update['id']);
+			$update = $this->model->make($update, false, true);
+			$this->constraintRefFk([$update]);
 		}
 
 		$doc = $this->collection()->findOneAndUpdate($filter, ['$set' => $update], $options);

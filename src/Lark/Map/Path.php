@@ -94,7 +94,7 @@ class Path
 		$r = &$array;
 		foreach (explode($separator, $key) as $k)
 		{
-			if (isset($r[$k]))
+			if (is_array($r) && array_key_exists($k, $r))
 			{
 				$r = &$r[$k];
 			}

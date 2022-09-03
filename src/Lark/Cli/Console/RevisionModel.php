@@ -205,30 +205,37 @@ class RevisionModel extends \Lark\Model
 	 *
 	 * @return Schema
 	 */
-	public static function schema(): Schema
+	public static function &schema(): Schema
 	{
-		return new Schema([
-			// indexes
-			'$indexes' => [
-				[self::FIELD_REV_ID => 1, '$name' => 'idxRevId', '$unique' => true],
-				[self::FIELD_DT => 1, '$name' => 'idxDt'],
-				[
-					self::FIELD_DT => 1, self::FIELD_COLL => 1, '$name' => 'idxDtColl',
-					'$unique' => true
+		static $schema;
+
+		if (!$schema)
+		{
+			$schema = new Schema([
+				// indexes
+				'$indexes' => [
+					[self::FIELD_REV_ID => 1, '$name' => 'idxRevId', '$unique' => true],
+					[self::FIELD_DT => 1, '$name' => 'idxDt'],
+					[
+						self::FIELD_DT => 1, self::FIELD_COLL => 1, '$name' => 'idxDtColl',
+						'$unique' => true
+					],
 				],
-			],
-			// fields
-			self::FIELD_ID => ['string', 'id'],
-			self::FIELD_REV_ID => ['string', 'notEmpty'],
-			self::FIELD_COLL => ['string', 'notEmpty'],
-			self::FIELD_STATUS => [
-				'int',
-				['between' => [0, 3]],
-				['default' => self::STATUS_PENDING]
-			],
-			self::FIELD_DT => ['int', 'notEmpty'],
-			self::FIELD_CREATED => ['dbdatetime', 'notNull', ['default' => db_datetime()]]
-		]);
+				// fields
+				self::FIELD_ID => ['string', 'id'],
+				self::FIELD_REV_ID => ['string', 'notEmpty'],
+				self::FIELD_COLL => ['string', 'notEmpty'],
+				self::FIELD_STATUS => [
+					'int',
+					['between' => [0, 3]],
+					['default' => self::STATUS_PENDING]
+				],
+				self::FIELD_DT => ['int', 'notEmpty'],
+				self::FIELD_CREATED => ['dbdatetime', 'notNull', ['default' => db_datetime()]]
+			]);
+		}
+
+		return $schema;
 	}
 
 	/**
