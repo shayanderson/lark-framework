@@ -22,9 +22,9 @@ class Record
 	/**
 	 * Channel
 	 *
-	 * @var string
+	 * @var string|null
 	 */
-	public string $channel;
+	public ?string $channel = null;
 
 	/**
 	 * Context

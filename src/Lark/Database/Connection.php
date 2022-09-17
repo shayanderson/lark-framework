@@ -97,7 +97,7 @@ class Connection
 	/**
 	 * Database collection factory
 	 *
-	 * @param string ...$name "connId.db.coll"
+	 * @param string ...$name "connId$db$coll"
 	 * 		or "App\Model\ClassName"
 	 * 		or "database", "collection"
 	 * 		or "connectionId", "database", "collection"
@@ -110,7 +110,7 @@ class Connection
 			throw new DatabaseException('Invalid database connection string (empty)');
 		}
 
-		// "connId.db.coll" or "db.coll"
+		// "connId$db$coll" or "db$coll"
 		if (count($name) > 1)
 		{
 			$name = implode('$', $name);
@@ -138,7 +138,13 @@ class Connection
 
 		[$connId, $db, $coll] = self::parseDatabaseString($name);
 
-		if (!isset(self::$databases[$connId][$db][$coll]))
+		if (
+			!isset(self::$databases[$connId][$db][$coll])
+			// recache if using model, could have used db string prior to accessing thru model
+			|| ($model && !self::$databases[$connId][$db][$coll]->hasModel())
+			// recache if not using model
+			|| (!$model && self::$databases[$connId][$db][$coll]->hasModel())
+		)
 		{
 			self::$databases[$connId][$db][$coll] = new Database(
 				self::factoryConnection($connId),

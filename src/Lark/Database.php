@@ -145,10 +145,11 @@ class Database
 
 		if (
 			($res = $this->collection()->bulkWrite($ops, $writeOptions))
-			&& ($res = $res->getModifiedCount())
 		)
 		{
-			$count = (int)$res;
+			$count += $res->getModifiedCount();
+			$count += $res->getInsertedCount();
+			$count += $res->getUpsertedCount();
 		}
 
 		return $this->debug([$count, $ids], __METHOD__, [
@@ -406,7 +407,12 @@ class Database
 		// dump
 		if ($this->connection()->getOptions()[ConnectionOptions::DEBUG_DUMP])
 		{
-			Debugger::internal($message . ($elapsed ? ' (' . $elapsed . ')' : null), $context);
+			Debugger::internal(
+				$message . ($elapsed ? ' (' . $elapsed . ')' : null),
+				$context,
+				true,
+				true
+			);
 		}
 
 		return $results;
@@ -826,7 +832,7 @@ class Database
 	 *
 	 * @return boolean
 	 */
-	private function hasModel(): bool
+	public function hasModel(): bool
 	{
 		if (!isset($this->model))
 		{
@@ -1054,22 +1060,28 @@ class Database
 	 *
 	 * @param array $documents
 	 * @param array $options
-	 * @param bool $returnAffected
-	 * @return int|array Document IDs or affected count if $returnAffected
+	 * @param bool $returnAffected Return affected count like `[affected, [ids]]`
+	 * @return array Document IDs or affected count with IDs like `[affected, [ids]]`
 	 */
-	public function replaceBulk(array $documents, array $options = [], $returnAffected = false)
+	public function replaceBulk(
+		array $documents,
+		array $options = [],
+		$returnAffected = false
+	): array
 	{
 		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 
 		if ($this->hasModel())
 		{
-			$documents = $this->model->makeArray($documents, true);
+			$documents = $this->model->makeArray($documents, Validator::MODE_REPLACE_ID);
 			$this->constraintRefFk($documents);
 		}
 
 		return $this->debug(
-			$this->bulkWrite('replaceOne', $documents, $options)[$returnAffected ? 0 : 1],
+			$returnAffected
+				? $this->bulkWrite('replaceOne', $documents, $options)
+				: $this->bulkWrite('replaceOne', $documents, $options)[1],
 			__METHOD__,
 			[
 				'documents' => $documents,
@@ -1131,7 +1143,7 @@ class Database
 
 		if ($this->hasModel())
 		{
-			$document = $this->model->make($document);
+			$document = $this->model->make($document, Validator::MODE_REPLACE);
 			$this->constraintRefFk([$document]);
 		}
 
@@ -1228,7 +1240,7 @@ class Database
 
 		if ($this->hasModel())
 		{
-			$update = $this->model->make($update, false, true);
+			$update = $this->model->make($update, Validator::MODE_UPDATE);
 			$this->constraintRefFk([$update]);
 		}
 
@@ -1261,22 +1273,28 @@ class Database
 	 *
 	 * @param array $documents
 	 * @param array $options
-	 * @param bool $returnAffected
-	 * @return int|array Document IDs or affected count if $returnAffected
+	 * @param bool $returnAffected Return affected count like `[affected, [ids]]`
+	 * @return array Document IDs or affected count with IDs like `[affected, [ids]]`
 	 */
-	public function updateBulk(array $documents, array $options = [], $returnAffected = false)
+	public function updateBulk(
+		array $documents,
+		array $options = [],
+		$returnAffected = false
+	): array
 	{
 		$this->optionsWriteConcern($options);
 		$timer = new Timer;
 
 		if ($this->hasModel())
 		{
-			$documents = $this->model->makeArray($documents, true, true);
+			$documents = $this->model->makeArray($documents, Validator::MODE_UPDATE_ID);
 			$this->constraintRefFk($documents);
 		}
 
 		return $this->debug(
-			$this->bulkWrite('updateOne', $documents, $options)[$returnAffected ? 0 : 1],
+			$returnAffected
+				? $this->bulkWrite('updateOne', $documents, $options)
+				: $this->bulkWrite('updateOne', $documents, $options)[1],
 			__METHOD__,
 			[
 				'documents' => $documents,
@@ -1348,7 +1366,7 @@ class Database
 
 		if ($this->hasModel())
 		{
-			$update = $this->model->make($update, false, true);
+			$update = $this->model->make($update, Validator::MODE_UPDATE);
 			$this->constraintRefFk([$update]);
 		}
 

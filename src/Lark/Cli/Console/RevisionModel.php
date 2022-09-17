@@ -201,9 +201,7 @@ class RevisionModel extends \Lark\Model
 	}
 
 	/**
-	 * Schema getter
-	 *
-	 * @return Schema
+	 * @inheritDoc
 	 */
 	public static function &schema(): Schema
 	{
@@ -231,7 +229,7 @@ class RevisionModel extends \Lark\Model
 					['default' => self::STATUS_PENDING]
 				],
 				self::FIELD_DT => ['int', 'notEmpty'],
-				self::FIELD_CREATED => ['dbdatetime', 'notNull', ['default' => db_datetime()]]
+				self::FIELD_CREATED => ['dbdatetime', 'notNull', ['default' => dbdatetime()]]
 			]);
 		}
 

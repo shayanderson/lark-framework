@@ -10,9 +10,11 @@ declare(strict_types=1);
 
 namespace Lark;
 
+use Closure;
 use Lark\Database\Constraint;
 use Lark\Database\Constraint\RefDelete;
 use Lark\Database\Constraint\RefFk;
+use Lark\Map\Path as MapPath;
 
 /**
  * Model schema
@@ -26,7 +28,7 @@ class Schema
 	 *
 	 * @var array
 	 */
-	private array $callbacks;
+	private array $callbacks = [];
 
 	/**
 	 * Database model schema constraints
@@ -91,6 +93,8 @@ class Schema
 
 		$this->schemaOrig = $schema;
 
+		$imports = [];
+
 		// detect special fields $[field]
 		foreach ($schema as $field => $rules)
 		{
@@ -98,9 +102,30 @@ class Schema
 			{
 				switch ($field)
 				{
+					case '$created':
+						// set created timestamp/datetime field
+						$fields = $schema[$field];
+						if (!is_array($fields))
+						{
+							$fields = [$fields => 'timestamp'];
+						}
+						foreach ($fields as $f => $type)
+						{
+							$this->default($f, function () use (&$type)
+							{
+								return self::getTime($type);
+							});
+						}
+						break;
+
 					case '$filter':
 						// auto db field filter
 						$this->filter = $schema[$field];
+						break;
+
+					case '$import':
+						// import file schema for field
+						$imports = $schema[$field];
 						break;
 
 					case '$index':
@@ -135,6 +160,22 @@ class Schema
 						}
 						break;
 
+					case '$updated':
+						// set updated timestamp/datetime field (static callback)
+						$fields = $schema[$field];
+						if (!is_array($fields))
+						{
+							$fields = [$fields => 'timestamp'];
+						}
+						foreach ($fields as $f => $type)
+						{
+							$this->callbacks[1][$f] = function () use (&$type)
+							{
+								return self::getTime($type);
+							};
+						}
+						break;
+
 					default:
 						throw new Exception('Schema field names cannot start with "$"', [
 							'field' => $field
@@ -148,6 +189,14 @@ class Schema
 
 		$this->schema = $schema;
 		$this->name = $name;
+
+		if ($imports)
+		{
+			foreach ($imports as $f => $file)
+			{
+				$this->import($f, $file);
+			}
+		}
 
 		// extract defaults
 		$this->defaults($this->schema);
@@ -163,7 +212,7 @@ class Schema
 	public function apply(string $field, callable $callback): self
 	{
 		#todo verify field (and nested field) exists in schema
-		$this->callbacks[$field] = $callback;
+		$this->callbacks[0][$field] = $callback;
 		return $this;
 	}
 
@@ -209,17 +258,18 @@ class Schema
 	 * Field value callback getter
 	 *
 	 * @param string $field
+	 * @param bool $isStatic
 	 * @return callable
 	 * @throws Exception If schema field value callback does not exist
 	 */
-	public function getCallback(string $field): callable
+	public function getCallback(string $field, bool $isStatic = false): callable
 	{
-		if (!$this->hasCallback($field))
+		if (!$this->hasCallback($field, $isStatic))
 		{
 			throw new Exception('Schema callback not found for field "' . $field . '"');
 		}
 
-		return $this->callbacks[$field];
+		return $this->callbacks[$isStatic ? 1 : 0][$field];
 	}
 
 	/**
@@ -246,7 +296,17 @@ class Schema
 	 */
 	public function getDefault(string $field)
 	{
-		return $this->defaults[$field] ?? null;
+		if (!array_key_exists($field, $this->defaults))
+		{
+			return null;
+		}
+
+		if ($this->defaults[$field] instanceof Closure)
+		{
+			return $this->defaults[$field]();
+		}
+
+		return $this->defaults[$field];
 	}
 
 	/**
@@ -311,14 +371,41 @@ class Schema
 	}
 
 	/**
+	 * Time getter
+	 *
+	 * @param string $type
+	 * @return mixed
+	 */
+	private static function getTime(string $type): mixed
+	{
+		switch ($type)
+		{
+			case 'datetime':
+				return new \DateTime;
+				break;
+
+			case 'dbdatetime':
+				return new \MongoDB\BSON\UTCDateTime;
+				break;
+
+			case 'timestamp':
+				return time();
+				break;
+		}
+
+		throw new Exception('Schema invalid time type "' . $type . '"');
+	}
+
+	/**
 	 * Check if field value callback exists
 	 *
 	 * @param string $field
+	 * @param bool $isStatic
 	 * @return boolean
 	 */
-	public function hasCallback(string $field): bool
+	public function hasCallback(string $field, bool $isStatic = false): bool
 	{
-		return isset($this->callbacks[$field]);
+		return isset($this->callbacks[$isStatic ? 1 : 0][$field]);
 	}
 
 	/**
@@ -340,6 +427,36 @@ class Schema
 	public function hasFilter(): bool
 	{
 		return count($this->filter) > 0;
+	}
+
+	/**
+	 * Import schema file for field schema
+	 *
+	 * @param string $field
+	 * @param string $file File name in schemas directory like "myschema" or "dir/myschema"
+	 * @return void
+	 */
+	public function import(string $field, string $file): void
+	{
+		$file = ltrim($file, DIRECTORY_SEPARATOR);
+
+		if (substr($file, -4) !== '.php')
+		{
+			$file .= '.php';
+		}
+
+		$f = new File(DIR_SCHEMAS . DIRECTORY_SEPARATOR . $file);
+
+		if (!$f->exists())
+		{
+			throw new Exception('Schema file does not exist for field schema import', [
+				'field' => $field,
+				'file' => $file,
+				'path' => $f->path()
+			]);
+		}
+
+		MapPath::set($this->schema, $field, require $f->path());
 	}
 
 	/**

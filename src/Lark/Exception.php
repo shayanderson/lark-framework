@@ -94,9 +94,7 @@ class Exception extends \Exception
 	 */
 	public static function handle(\Throwable $th, callable $handler): void
 	{
-		$info = [
-			'type' => get_class($th)
-		];
+		$info['message'] = $th->getMessage();
 
 		if ($th->getCode())
 		{
@@ -107,12 +105,12 @@ class Exception extends \Exception
 			$info['code'] = 500;
 		}
 
+		$info['type'] = get_class($th);
+
 		if (method_exists($th, 'getMethod'))
 		{
 			$info['source'] = $th->getMethod();
 		}
-
-		$info['message'] = $th->getMessage();
 
 		if (method_exists($th, 'getContext') && $th->getContext())
 		{

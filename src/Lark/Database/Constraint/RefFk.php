@@ -175,6 +175,13 @@ class RefFk extends Constraint
 
 		$fn_id = function ($id) use (&$ids)
 		{
+			if (is_array($id))
+			{
+				throw new DatabaseConstraintException(
+					'Field ID cannot be an array, use "field.$" instead'
+				);
+			}
+
 			if (!$this->isLocalFieldNullable)
 			{
 				$ids[$id] = $id;

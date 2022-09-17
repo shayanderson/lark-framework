@@ -32,6 +32,11 @@ class Unique extends \Lark\Validator\Rule
 	 */
 	public function validate($value): bool
 	{
+		if (!is_array($value))
+		{
+			return true; // no values to compare
+		}
+
 		return $value === array_unique($value);
 	}
 }

@@ -52,15 +52,15 @@ class Template
 		if (!$templatePath)
 		{
 			#todo set as Lark\Config value
-			$templatePath = Console::getDir('template') . '/_console/model.txt';
+			$templatePath = Console::getDir('template') . '/_console/model';
 		}
 
 		$template = self::getConsoleTemplate($templatePath);
 
 		$db = $dbString ? "const DBS = '{$dbString}';" : 'const DBS = null;';
 		$schemaStr = $schemaPathRel
-			? "require DIR_SCHEMAS . '/{$schemaPathRel}'"
-			: "['id' => ['string', 'id']]";
+			? "const SCHEMA = '{$schemaPathRel}';"
+			: "const SCHEMA = null;";
 
 		return str_replace([
 			'{$NAMESPACE}',
@@ -154,11 +154,11 @@ OUT;
 			#todo set as Lark\Config value
 			if ($modelClass)
 			{
-				$templatePath = Console::getDir('template') . '/_console/route-model.txt';
+				$templatePath = Console::getDir('template') . '/_console/route-model';
 			}
 			else
 			{
-				$templatePath = Console::getDir('template') . '/_console/route.txt';
+				$templatePath = Console::getDir('template') . '/_console/route';
 			}
 		}
 

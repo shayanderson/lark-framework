@@ -26,7 +26,7 @@ Lark is a modern, lightweight app framework designed specifically for developing
 - [File](#file)
 - [Timer](#timer)
 - [Helpers](#helpers)
-  - [`app()`](#helper-app), [`db()`](#helper-db), [`db_datetime()`](#helper-db_datetime), [`debug()`](#helper-debug), [`env()`](#helper-env), [`f()`](#helper-f), [`halt()`](#helper-halt), [`logger()`](#helper-logger), [`p()`](#helper-p), [`pa()`](#helper-pa), [`req()`](#helper-req), [`res()`](#helper-res), [`router()`](#helper-router), [`x()`](#helper-x)
+  - [`app()`](#helper-app), [`db()`](#helper-db), [`dbdatetime()`](#helper-dbdatetime), [`debug()`](#helper-debug), [`env()`](#helper-env), [`f()`](#helper-f), [`halt()`](#helper-halt), [`logger()`](#helper-logger), [`p()`](#helper-p), [`pa()`](#helper-pa), [`req()`](#helper-req), [`res()`](#helper-res), [`router()`](#helper-router), [`x()`](#helper-x)
 
 ## Installation
 
@@ -913,6 +913,92 @@ $schema->apply('name', function($name): string {
 });
 ```
 
+### Field Schema Imports
+
+A schema file can be imported as a schema for a schema field. First, create a partial schema in a schema file, for example: `[DIR_SCHEMAS]/partials/users.info.php`.
+
+```php
+<?php
+return [
+    'object',
+    [
+        'fields' => [
+            'age' => 'int',
+            'tags' => 'array'
+        ]
+    ]
+];
+```
+
+Next, add the import using a field name and file.
+
+```php
+$schema = new Schema([
+    '$import' => [
+        // field => file (in schemas directory)
+        'info' => 'partials/users.info'
+    ],
+    'name' => ['string', 'notEmpty'],
+    // field for schema import (optional, does not need to be set here)
+    'info' => null
+]);
+```
+
+Printing `$schema->toArray()` will output:
+
+```
+Array
+(
+    [name] => Array
+        (
+            [0] => string
+            [1] => notEmpty
+        )
+
+    [info] => Array
+        (
+            [0] => object
+            [1] => Array
+                (
+                    [fields] => Array
+                        (
+                            [age] => int
+                            [tags] => array
+                        )
+
+                )
+
+        )
+
+)
+```
+
+Nested fields (using dot notation) can also be used.
+
+```php
+$schema = new Schema([
+    '$import' => [
+        // field => file (in schemas directory)
+        'info.1.fields' => 'partials/users.info'
+    ],
+    'name' => ['string', 'notEmpty'],
+    'info' => [
+        'object',
+        ['fields' => null]
+    ]
+]);
+```
+
+Example partial schema in: `[DIR_SCHEMAS]/partials/users.info.php`:
+
+```php
+<?php
+return [
+    'age' => 'int',
+    'tags' => 'array'
+];
+```
+
 ## Model
 
 `Lark\Model` is a model: a way to simplify database calls and creating/validating entities.
@@ -927,18 +1013,11 @@ class User extends Model
     const DBS = 'default$app$users';
     public static function &schema(): Schema
     {
-        static $schema;
-
-        if(!$schema)
-        {
-            $schema = new Schema([
-                'name' => ['string', 'notEmpty'],
-                'age' => ['int', 'notEmpty'],
-                'isAdmin' => ['bool', 'notNull', ['default' => false]]
-            ]);
-        }
-
-        return $schema;
+        return parent::schema([
+            'name' => ['string', 'notEmpty'],
+            'age' => ['int', 'notEmpty'],
+            'isAdmin' => ['bool', 'notNull', ['default' => false]]
+        ]);
     }
 }
 ```
@@ -960,27 +1039,25 @@ $user = (new App\Model\User)->makeArray([
 ]);
 ```
 
-The `$requireId` argument can be set to `true` to require any field using the `id` rule.
+The `$mode` argument can be used to change the validator mode, for example requiring document IDs with `replace+id` or `update+id`:
 
 ```php
 // schema: ['id' => ['string', 'id'], 'name' => ['string', 'notEmpty']]
 $user = (new App\Model\User)->make([
     'name' => 'Bob'
-], /* $requireId */ true);
+], 'update+id');
 // throws Lark\Validator\ValidatorException:
 // Validation failed: "User.id" must be a string
 ```
 
-The `$partial` argument can be set to `true` to allow missing fields that can be used for partial documents.
+The `$mode` argument can be used to allow missing fields that can be used for partial documents with `update` or `update+id`:
 
 ```php
 $user = (new App\Model\User)->make([
     'name' => 'Bob'
-], /* $requireId */ false, /* $partial */ true);
+], 'update');
 var_dump($user); // array(1) { ["name"]=> string(3) "Bob" }
 ```
-
-> The `$requireId` and `$partial` arguments can be used together to require IDs and allow partial documents
 
 The `Model::db()` method can be used to access the Model database collection (`Model::DBS` must be set).
 
@@ -1004,6 +1081,73 @@ $docs = (new \App\Model\User)->db()->find(['role' => 'admin']);
 
 > Important: Model classes shouldn't have any required parameters in their `Model::__construct()` method, because the Models are automatically instantiated when using model/database binding, and any required parameters will not be present
 
+### Model Schema Method
+
+The `Model::schema()` method can be used in multiple ways. By default the method will use the `Model::SCHEMA` schema file constant to load the schema from file.
+
+Another way to create a schema is overriding the parent method and passing the schema array:
+
+```php
+class ExampleModel extends Model
+{
+    public static function &schema(): Schema
+    {
+        return parent::schema([
+            'id' => ['string', 'id'],
+            // ...
+        ]);
+    }
+}
+```
+
+The above method caches the schema object, so when the schema method is called again it returns the referenced `Schema` object.
+
+A callback can also be passed to access the `Schema` object created by the parent method, example:
+
+```php
+class ExampleModel extends Model
+{
+    const SCHEMA = 'users.php';
+    public static function &schema(): Schema
+    {
+        return parent::schema(function(Schema &$schema)
+        {
+            $schema->apply('name', function($name)
+            {
+                return strtoupper($name);
+            });
+        });
+    }
+}
+```
+
+### Auto Created and Updated Field Values
+
+Created and updated field values can be used to auto set fields with created and updated date/times. Example schema:
+
+```php
+[
+    '$created' => 'createdAt',
+    '$updated' => 'updatedAt',
+    'name' => ['string', 'notNull'],
+    'createdAt' => ['timestamp', 'notNull'],
+    'updatedAt' => ['timestamp', 'notNull']
+]
+```
+
+Now the `createdAt` and `updatedAt` fields with be auto set to the current timestamp (`time()`). The values can be set to `timestamp` by default, or can be set to `datetime` for `DateTime` or `dbdatetime` for `MongoDB\BSON\UTCDateTime`, example:
+
+```php
+[
+    '$created' => [
+        'createdAt' => 'dbdatetime'
+    ],
+    // ...
+]
+```
+
+In the above examples the `createdAt` field will be set once (using schema default value) and the `updatedAt` field will be set each time the document is made.
+
 ### Database Model Schema Constraints
 
 Database model schema constraints can be used as database constraints on references like verifying foreign keys and delete cascades.
@@ -1018,22 +1162,15 @@ class UserLog extends Model
     const DBS = 'default$app$users.log';
     public static function &schema(): Schema
     {
-        static $schema;
-
-        if(!$schema)
-        {
-            $schema = new Schema([
-                '$ref:fk' => [
-                    // collection => [localField => foreignField, ...]
-                    'users' => ['userId' => 'id']
-                ],
-                'id' => ['string', 'id'],
-                'userId' => ['string', 'notEmpty'],
-                'message' => ['string', 'notEmpty']
-            ]);
-        }
-
-        return $schema;
+        return parent::schema([
+            '$ref:fk' => [
+                // collection => [localField => foreignField, ...]
+                'users' => ['userId' => 'id']
+            ],
+            'id' => ['string', 'id'],
+            'userId' => ['string', 'notEmpty'],
+            'message' => ['string', 'notEmpty']
+        ]);
     }
 }
 ```
@@ -1150,21 +1287,14 @@ class User extends Model
     const DBS = 'default$app$users';
     public static function &schema(): Schema
     {
-        static $schema;
-
-        if(!$schema)
-        {
-            $schema = new Schema([
-                '$ref:delete' => [
-                    // collection => [foreign fields]
-                    'users.log' => ['userId']
-                ],
-                'id' => ['string', 'id'],
-                'name' => ['string', 'notEmpty']
-            ]);
-        }
-
-        return $schema;
+        return parent::schema([
+            '$ref:delete' => [
+                // collection => [foreign fields]
+                'users.log' => ['userId']
+            ],
+            'id' => ['string', 'id'],
+            'name' => ['string', 'notEmpty']
+        ]);
     }
 }
 ```
@@ -1986,16 +2116,16 @@ $db = db(App\Model\User::class);
 
 > Read more in [Database Connections](#database-connections)
 
-### Helper `db_datetime()`
+### Helper `dbdatetime()`
 
-The `db_datetime()` function returns a `MongoDB\BSON\UTCDateTime` object.
+The `dbdatetime()` function returns a `MongoDB\BSON\UTCDateTime` object.
 
 ```php
-$dbDt = db_datetime();
+$dbDt = dbdatetime();
 $dt = $dbDt->toDateTime(); // DateTime object
 
 // with milliseconds
-$dbDt = db_datetime(strtotime('-1 day') * 1000);
+$dbDt = dbdatetime(strtotime('-1 day') * 1000);
 ```
 
 ### Helper `debug()`

@@ -20,6 +20,15 @@ use Lark\Validator\ValidatorException;
 class Validator
 {
 	/**
+	 * Validator modes
+	 */
+	const MODE_CREATE = 'create';
+	const MODE_REPLACE = 'replace';
+	const MODE_REPLACE_ID = 'replace+id';
+	const MODE_UPDATE = 'update';
+	const MODE_UPDATE_ID = 'update+id';
+
+	/**
 	 * Document
 	 *
 	 * @var array|object
@@ -34,25 +43,18 @@ class Validator
 	private $docOrig;
 
 	/**
-	 * Require document ID flag
-	 *
-	 * @var boolean
-	 */
-	private bool $isDocIdRequired = false;
-
-	/**
-	 * Partial document flag
-	 *
-	 * @var boolean
-	 */
-	private bool $isPartialDoc = false;
-
-	/**
 	 * Validation messages
 	 *
 	 * @var array
 	 */
 	private array $messages = [];
+
+	/**
+	 * Validator mode
+	 *
+	 * @var string
+	 */
+	private string $mode;
 
 	/**
 	 * Rule bindings
@@ -80,11 +82,13 @@ class Validator
 	 *
 	 * @param array|object $document
 	 * @param array|Schema $schema
+	 * @param string $mode
 	 */
-	public function __construct($document, $schema)
+	public function __construct($document, $schema, string $mode = self::MODE_CREATE)
 	{
 		$this->doc = $document;
 		$this->docOrig = $document;
+		$this->mode = $mode;
 
 		if ($schema instanceof Schema)
 		{
@@ -99,6 +103,17 @@ class Validator
 		{
 			#todo test
 			self::$ruleBinding = Binding::get('validator.rule', []);
+		}
+
+		if (!in_array($this->mode, [
+			self::MODE_CREATE,
+			self::MODE_REPLACE,
+			self::MODE_REPLACE_ID,
+			self::MODE_UPDATE,
+			self::MODE_UPDATE_ID
+		]))
+		{
+			throw new ValidatorException('Invalid validator mode "' . $this->mode . '"');
 		}
 	}
 
@@ -232,14 +247,14 @@ class Validator
 	}
 
 	/**
-	 * Doc ID required flag setter
+	 * Check if mode
 	 *
-	 * @return self
+	 * @param string ...$mode
+	 * @return boolean
 	 */
-	public function id(): self
+	private function isMode(string ...$mode): bool
 	{
-		$this->isDocIdRequired = true;
-		return $this;
+		return in_array($this->mode, $mode);
 	}
 
 	/**
@@ -251,17 +266,6 @@ class Validator
 	{
 		$this->assert();
 		return $this->doc;
-	}
-
-	/**
-	 * Partial document flag setters
-	 *
-	 * @return self
-	 */
-	public function partial(): self
-	{
-		$this->isPartialDoc = true;
-		return $this;
 	}
 
 	/**
@@ -319,7 +323,8 @@ class Validator
 				{
 					if (in_array('id', $rules))
 					{
-						if ($this->isDocIdRequired)
+						// check if id field required
+						if ($this->isMode(self::MODE_REPLACE_ID, self::MODE_UPDATE_ID))
 						{
 							$data[$field] = null; // auto set
 						}
@@ -333,15 +338,32 @@ class Validator
 					}
 				}
 
+				// check for schema field value static callback
+				$fieldName = implode('.',  array_merge($parentPath, [$field]));
+				if ($this->schema->hasCallback($fieldName, true))
+				{
+					$data[$field] = $this->schema->getCallback($fieldName, true)();
+					// value set by static callback, continue
+					continue;
+				}
+
 				// missing fields allowed (partial), partial docs not allowed for nested schemas
-				if ($this->isPartialDoc && !$isNestedSchema)
+				if ($this->isMode(self::MODE_UPDATE, self::MODE_UPDATE_ID) && !$isNestedSchema)
 				{
 					continue;
 				}
 
-				$data[$field] = $this->schema->getDefault(
-					($parentPath ? implode('.', $parentPath) . '.' : null) . $field
-				);
+				// add default values only for create
+				if ($this->isMode(self::MODE_CREATE))
+				{
+					$data[$field] = $this->schema->getDefault(
+						($parentPath ? implode('.', $parentPath) . '.' : null) . $field
+					);
+				}
+				else
+				{
+					$data[$field] = null;
+				}
 
 				// auto convert to object for empty value
 				if (is_array($rules) && (in_array('object', $rules) || in_array('obj', $rules)))
@@ -364,6 +386,11 @@ class Validator
 			if ($this->schema->hasCallback($fieldName))
 			{
 				$data[$field] = $value = $this->schema->getCallback($fieldName)($value);
+			}
+			// check for schema field value static callback
+			if ($this->schema->hasCallback($fieldName, true))
+			{
+				$data[$field] = $this->schema->getCallback($fieldName, true)();
 			}
 
 			$rules = $schema[$field];
@@ -514,7 +541,7 @@ class Validator
 				else
 				{
 					$ruleClass = '\\' . self::class . '\\Type' . ucfirst($fieldType) . '\\'
-						. ucfirst($rule);
+						. ucfirst((string)$rule);
 				}
 
 				// invoke dynamic rule

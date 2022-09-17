@@ -25,6 +25,11 @@ abstract class Model
 	const DBS = null;
 
 	/**
+	 * Schema file
+	 */
+	const SCHEMA = null;
+
+	/**
 	 * Database instance getter
 	 *
 	 * @return Database
@@ -45,44 +50,26 @@ abstract class Model
 	 * Make entity
 	 *
 	 * @param array|object $data
-	 * @param bool $requireId require doc ID field
-	 * @param bool $partial allow partial document
+	 * @param string $mode
 	 * @return array|object
 	 */
-	final public function make($data, bool $requireId = false, bool $partial = false)
+	final public function make($data, string $mode = Validator::MODE_CREATE)
 	{
-		$v = new Validator($data, self::schemaGet());
-
-		if ($requireId)
-		{
-			$v->id();
-		}
-
-		if ($partial)
-		{
-			$v->partial();
-		}
-
-		return $v->make();
+		return (new Validator($data, self::schemaGet(), $mode))->make();
 	}
 
 	/**
 	 * Make entity array
 	 *
 	 * @param array $data
-	 * @param bool $requireId require doc ID field
-	 * @param bool $partial allow partial documents
+	 * @param string $mode
 	 * @return array
 	 */
-	final public function &makeArray(
-		array $data,
-		bool $requireId = false,
-		bool $partial = false
-	): array
+	final public function &makeArray(array $data, string $mode = Validator::MODE_CREATE): array
 	{
 		foreach ($data as $k => $v)
 		{
-			$data[$k] = $this->make($v, $requireId, $partial);
+			$data[$k] = $this->make($v, $mode);
 		}
 
 		return $data;
@@ -91,9 +78,44 @@ abstract class Model
 	/**
 	 * Schema getter
 	 *
+	 * @param callable|array Callable for Schema object access like `function(Schema &$schema){}`
+	 * 		or Array for setting schema array
 	 * @return Schema
 	 */
-	abstract public static function &schema(): Schema;
+	public static function &schema(): Schema
+	{
+		static $schemas = [];
+
+		if (!isset($schemas[static::class]))
+		{
+			$arg = func_num_args() ? func_get_arg(0) : null;
+			$schema = null;
+
+			if ($arg && is_array($arg))
+			{
+				$schema = $arg;
+			}
+
+			if (!$schema && !static::SCHEMA)
+			{
+				throw new Exception('Invalid schema for Model (Model::SCHEMA)', [
+					'class' => static::class
+				]);
+			}
+
+			$schemas[static::class] = new Schema(
+				$schema ?? require DIR_SCHEMAS . '/' . static::SCHEMA
+			);
+
+			// check for callback
+			if ($arg && is_callable($arg))
+			{
+				$arg($schemas[static::class]);
+			}
+		}
+
+		return $schemas[static::class];
+	}
 
 	/**
 	 * Schema with name getter

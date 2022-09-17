@@ -55,7 +55,7 @@ function db(string ...$name): Database
  * @param int|float|string|DateTimeInterface $milliseconds
  * @return \MongoDB\BSON\UTCDateTime
  */
-function db_datetime($milliseconds = null)
+function dbdatetime($milliseconds = null)
 {
 	return $milliseconds === null
 		? new MongoDB\BSON\UTCDateTime

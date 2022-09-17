@@ -46,9 +46,10 @@ class Debugger
 	/**
 	 * Dump
 	 *
+	 * @param bool $exit
 	 * @return void
 	 */
-	public static function dump(): void
+	public static function dump(bool $exit = true): void
 	{
 		if (PHP_SAPI !== 'cli' && Binding::get('debug.dump', false))
 		{
@@ -66,7 +67,11 @@ class Debugger
 		}
 
 		Dumper::dump(array_reverse(self::$info));
-		exit;
+
+		if ($exit)
+		{
+			exit;
+		}
 	}
 
 	/**
@@ -136,9 +141,16 @@ class Debugger
 	 *
 	 * @param string $message
 	 * @param mixed $context
+	 * @param bool $force When true will ignore Lark "debug.dump" and "debug.log" settings
+	 * @param bool $dumpOnly
 	 * @return void
 	 */
-	public static function internal(string $message, $context = null): void
+	public static function internal(
+		string $message,
+		$context = null,
+		bool $force = false,
+		bool $dumpOnly = false
+	): void
 	{
 		static $isDump, $isLog;
 
@@ -148,14 +160,14 @@ class Debugger
 			$isLog = Binding::get('debug.log', false);
 		}
 
-		if ($isDump)
+		if ($isDump || $force)
 		{
 			Debugger::append($context)
 				->name($message)
 				->group('$lark');
 		}
 
-		if ($isLog)
+		if (($isLog || $force) && !$dumpOnly)
 		{
 			(new Logger('$lark'))->debug($message, $context);
 		}

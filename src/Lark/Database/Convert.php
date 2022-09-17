@@ -38,10 +38,18 @@ class Convert
 
 		$doc = &self::iteratorToArrayRecursive($doc);
 
+		/** @var array $doc */
 		// convert [_id => ObjectId] to [id => string]
-		if (isset($doc['_id']) && $doc['_id'] instanceof ObjectId)
+		if (isset($doc['_id']))
 		{
-			$doc = ['id' => $doc['_id']->__toString()] + $doc;
+			if ($doc['_id'] instanceof ObjectId)
+			{
+				$doc = ['id' => $doc['_id']->__toString()] + $doc;
+			}
+			else
+			{
+				$doc = ['id' => $doc['_id']] + $doc;
+			}
 			unset($doc['_id']);
 		}
 
