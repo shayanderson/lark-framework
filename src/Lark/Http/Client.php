@@ -110,7 +110,7 @@ class Client
 			throw new Exception('PHP "curl" extension is required when using the Http class');
 		}
 
-		$this->options = $options + $this->options;
+		$this->setOptions($options);
 	}
 
 	/**
@@ -381,6 +381,17 @@ class Client
 		return $this->fetch($url, $params, $options, [
 			CURLOPT_CUSTOMREQUEST => 'PUT'
 		]);
+	}
+
+	/**
+	 * Client options setter
+	 *
+	 * @param array $options
+	 * @return void
+	 */
+	public function setOptions(array $options): void
+	{
+		$this->options = $options + $this->options;
 	}
 
 	/**

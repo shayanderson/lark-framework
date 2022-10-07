@@ -66,7 +66,7 @@ class File
 	{
 		if (!$this->exists())
 		{
-			throw new Exception('File does not exist', ['path' => $this->path()]);
+			throw new Exception('File "' . $this->path . '" does not exist');
 		}
 	}
 

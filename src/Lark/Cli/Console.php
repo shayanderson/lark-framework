@@ -120,6 +120,16 @@ class Console extends \Lark\Cli
 				'-c, --compile',
 				'Compile schema from schema template, compiles all when no name arg'
 			)
+			->option(
+				'--ignore',
+				'Use with --refs option to ignore missing delete refs,'
+					. ' like --ignore=users,users2'
+			)
+			->option('--missing', 'Use with --refs option to only display missing delete refs')
+			->option(
+				'--refs',
+				'Display existing and possible missing delete refs for all compiled schemas'
+			)
 			->action([Command::class, 'schema']);
 	}
 

@@ -137,16 +137,11 @@ class Connection
 		}
 
 		[$connId, $db, $coll] = self::parseDatabaseString($name);
+		$type = $model ? 1 : 0;
 
-		if (
-			!isset(self::$databases[$connId][$db][$coll])
-			// recache if using model, could have used db string prior to accessing thru model
-			|| ($model && !self::$databases[$connId][$db][$coll]->hasModel())
-			// recache if not using model
-			|| (!$model && self::$databases[$connId][$db][$coll]->hasModel())
-		)
+		if (!isset(self::$databases[$type][$connId][$db][$coll]))
 		{
-			self::$databases[$connId][$db][$coll] = new Database(
+			self::$databases[$type][$connId][$db][$coll] = new Database(
 				self::factoryConnection($connId),
 				$db,
 				$coll,
@@ -154,7 +149,7 @@ class Connection
 			);
 		}
 
-		return self::$databases[$connId][$db][$coll];
+		return self::$databases[$type][$connId][$db][$coll];
 	}
 
 	/**

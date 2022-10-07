@@ -234,11 +234,17 @@ class Revision
 	 *
 	 * @param Console $console
 	 * @param string $directory
+	 * @param string $indent
 	 * @return void
 	 */
-	public static function run(Console $console, string $directory): void
+	public static function run(Console $console, string $directory, string $indent = ''): void
 	{
 		$checks = [];
+
+		$fn_echo = function (string $message, string $end = PHP_EOL) use (&$console, &$indent): void
+		{
+			$console->output()->echo($indent . $message, $end);
+		};
 
 		// ensure all revs in DB
 		foreach (new DirectoryIterator($directory) as $o)
@@ -259,7 +265,7 @@ class Revision
 
 		if (!$checks)
 		{
-			$console->output()->echo('No revisions.');
+			$fn_echo('No revisions.');
 			return;
 		}
 
@@ -269,7 +275,7 @@ class Revision
 			{
 				/** @var Revision $rev */
 
-				$console->output()->echo(
+				$fn_echo(
 					'Checking pending commits for "' . $conn . '.' . $db . '"...'
 				);
 
@@ -280,13 +286,13 @@ class Revision
 					continue;
 				}
 
-				$console->output()->echo(
+				$fn_echo(
 					'Executing pending commits for "' . $conn . '.' . $db . '"...'
 				);
 
 				foreach ($pendingRevs as $r)
 				{
-					$console->output()->echo(
+					$fn_echo(
 						'  Executing commit "' . $r[RevisionModel::FIELD_REV_ID] . '"...',
 						''
 					);
@@ -323,6 +329,6 @@ class Revision
 			}
 		}
 
-		$console->output()->echo('Done.');
+		$fn_echo('Done.');
 	}
 }

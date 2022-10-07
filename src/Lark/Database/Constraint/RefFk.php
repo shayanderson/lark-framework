@@ -15,7 +15,6 @@ use Lark\Database;
 use Lark\Database\Connection;
 use Lark\Database\Constraint;
 use Lark\Database\Convert;
-use Lark\Map;
 use Lark\Map\Path as MapPath;
 
 /**
@@ -98,10 +97,11 @@ class RefFk extends Constraint
 		}
 
 		// nullable$field
-		if (substr($this->localField, 0, 9) === 'nullable$')
+		$tmpNullableField = self::stripNullablePrefix($this->localField);
+		if ($tmpNullableField !== $this->localField)
 		{
 			$this->isLocalFieldNullable = true;
-			$this->localField = substr($this->localField, 9);
+			$this->localField = $tmpNullableField;
 		}
 
 		// lField.$
@@ -155,6 +155,22 @@ class RefFk extends Constraint
 	}
 
 	/**
+	 * Strip nullable prefix like `nullable$field` => `field`
+	 *
+	 * @param string $field
+	 * @return string
+	 */
+	public static function stripNullablePrefix(string $field): string
+	{
+		if (substr($field, 0, 9) === 'nullable$')
+		{
+			$field = substr($field, 9);
+		}
+
+		return $field;
+	}
+
+	/**
 	 * Verify FK constraint
 	 *
 	 * @param Database $db
@@ -202,7 +218,7 @@ class RefFk extends Constraint
 				$r = &$doc;
 				$last = false;
 
-				foreach (explode('.', $this->localFieldOrig) as $f)
+				foreach (explode('.', self::stripNullablePrefix($this->localFieldOrig)) as $f)
 				{
 					if ($f == '$')
 					{
@@ -244,7 +260,11 @@ class RefFk extends Constraint
 				if (!MapPath::has(
 					$doc,
 					// "f1.f2.$.id" => "f1.f2"
-					substr($this->localFieldOrig, 0, strpos($this->localFieldOrig, '.$.'))
+					substr(
+						self::stripNullablePrefix($this->localFieldOrig),
+						0,
+						strpos(self::stripNullablePrefix($this->localFieldOrig), '.$.')
+					)
 				))
 				{
 					continue;

@@ -14,6 +14,7 @@ use Lark\Cli;
 use Lark\Cli\Console;
 use Lark\Cli\Output;
 use Lark\Database\Connection;
+use Lark\Database\Constraint;
 use Lark\File;
 
 /**
@@ -51,12 +52,13 @@ class Command
 	/**
 	 * Commit all revisions
 	 *
+	 * @param string $indent
 	 * @return void
 	 */
-	public function commit(): void
+	public function commit(string $indent = ''): void
 	{
-		$this->output()->echo('Running commits for all revisions...');
-		Revision::run($this->console, Console::getDir('revision'));
+		$this->output()->echo($indent . 'Running commits for all revisions...');
+		Revision::run($this->console, Console::getDir('revision'), $indent);
 	}
 
 	/**
@@ -417,16 +419,32 @@ class Command
 	 *
 	 * @param string|InputName $inputName
 	 * @param bool|null $optCompile
+	 * @param bool|null $optRefs
 	 * @return SchemaFile|null
 	 */
-	public function schema($inputName, ?bool $optCompile = null): ?SchemaFile
+	public function schema(
+		$inputName,
+		?bool $optCompile = null,
+		?string $optIgnore = null,
+		?bool $optMissing = null,
+		?bool $optRefs = null
+	): ?SchemaFile
 	{
+		if ($optRefs)
+		{
+			self::schemaRefs(
+				$optIgnore !== null ? array_filter(explode(',', $optIgnore)) : [],
+				$optMissing === true
+			);
+			return null;
+		}
+
 		// compile all
 		if (!$inputName)
 		{
 			if (!$optCompile)
 			{
-				$this->console->error('Compile all command requries -c option or --compile option');
+				$this->console->error('Compile all command requires -c option or --compile option');
 			}
 
 			$this->output()->echo('Compiling all schema templates...');
@@ -481,5 +499,55 @@ class Command
 		$this->output()->echo();
 
 		return $schemaFile;
+	}
+
+	/**
+	 * Display schema refs + missing
+	 *
+	 * @return void
+	 */
+	private function schemaRefs(array $ignore, bool $isMissingOnly): void
+	{
+		$out = $this->output();
+		$refs = SchemaFile::getAllRefs($ignore);
+
+		$out->echo();
+
+		foreach ($refs as $type => $refs)
+		{
+			if ($isMissingOnly && $type !== 'missing')
+			{
+				continue;
+			}
+
+			if ($refs)
+			{
+				$out->styleDim->echo(str_repeat('#', 50));
+				$out->styleBold->echo($type);
+				$out->styleDim->echo(str_repeat('#', 50));
+			}
+
+			foreach ($refs as $pathRel => $refs)
+			{
+				if ($type == 'missing')
+				{
+					$out->colorYellow->echo(
+						'(missing) ' . Constraint::TYPE_REF_DELETE . ' in ',
+						''
+					);
+				}
+				else
+				{
+					$out->styleDim->echo($type . ' in ', '');
+				}
+				$out->styleBold->colorCyan->echo($pathRel);
+
+				$out->echo(
+					json_encode($refs, JSON_PRETTY_PRINT)
+				);
+			}
+		}
+
+		$out->echo();
 	}
 }
