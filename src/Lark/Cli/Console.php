@@ -153,13 +153,18 @@ class Console extends \Lark\Cli
 	 */
 	public static function getDir(string $name): string
 	{
-		#todo add:
-		// , bool $absolute = true
 		$dirs = self::getDirs();
 
 		if (!isset($dirs[$name]))
 		{
-			throw new ConsoleException('Directory does not exist for "' . $name . '"');
+			throw new ConsoleException('Unknown directory name "' . $name . '"');
+		}
+
+		if (!is_dir($dirs[$name]))
+		{
+			throw new ConsoleException(
+				'Directory for "' . $name . '" not found ("' . $dirs[$name] . '")'
+			);
 		}
 
 		return $dirs[$name];

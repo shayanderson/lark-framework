@@ -52,7 +52,7 @@ class Template
 		if (!$templatePath)
 		{
 			#todo set as Lark\Config value
-			$templatePath = Console::getDir('template') . '/_console/model';
+			$templatePath = Console::getDir('template') . '/_console/model.tpl';
 		}
 
 		$template = self::getConsoleTemplate($templatePath);
@@ -154,11 +154,11 @@ OUT;
 			#todo set as Lark\Config value
 			if ($modelClass)
 			{
-				$templatePath = Console::getDir('template') . '/_console/route-model';
+				$templatePath = Console::getDir('template') . '/_console/route-model.tpl';
 			}
 			else
 			{
-				$templatePath = Console::getDir('template') . '/_console/route';
+				$templatePath = Console::getDir('template') . '/_console/route.tpl';
 			}
 		}
 

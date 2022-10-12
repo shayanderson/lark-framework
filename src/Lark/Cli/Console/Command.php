@@ -37,16 +37,6 @@ class Command
 	public function __construct()
 	{
 		$this->console = Console::getInstance();
-
-		foreach (Console::getDirs() as $dirName => $dir)
-		{
-			if (!is_dir($dir))
-			{
-				throw new ConsoleException(ucfirst($dirName) . ' directory not found', [
-					'directory' => $dir
-				]);
-			}
-		}
 	}
 
 	/**
