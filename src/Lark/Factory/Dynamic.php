@@ -2,7 +2,7 @@
 /**
  * Lark Framework
  *
- * @copyright Shay Anderson <https://www.shayanderson.com>
+ * @copyright Shay Anderson <https://shayanderson.com>
  * @license MIT License <https://github.com/shayanderson/lark-framework/blob/master/LICENSE.md>
  * @link <https://github.com/shayanderson/lark-framework>
 */
@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Factory;
 
-use Lark\Exception;
 use ReflectionClass;
 
 /**
@@ -93,7 +92,7 @@ class Dynamic
 		}
 		catch (\ReflectionException $ex)
 		{
-			throw new Exception($ex->getMessage(), [
+			throw new ClassNotFoundException($ex->getMessage(), [
 				'class' => $class
 			]);
 		}

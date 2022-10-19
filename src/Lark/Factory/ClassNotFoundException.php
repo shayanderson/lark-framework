@@ -8,27 +8,13 @@
 */
 declare(strict_types=1);
 
-namespace Lark\Request;
+namespace Lark\Factory;
 
 /**
- * Request query
+ * Dynamic factory class not found exception
  *
  * @author Shay Anderson
  */
-class Query extends AbstractInput
+class ClassNotFoundException extends \Lark\Exception
 {
-	/**
-	 * Input type
-	 */
-	const TYPE = INPUT_GET;
-
-	/**
-	 * Input array getter
-	 *
-	 * @return array
-	 */
-	protected static function &getInputArray(): array
-	{
-		return $_GET;
-	}
 }
