@@ -241,29 +241,6 @@ function pa(...$values): void
 }
 
 /**
- * Convert object to array (recursive)
- *
- * @param mixed $value
- * @return void
- */
-function &obj_to_arr($value)
-{
-	if (!is_array($value) && !is_object($value))
-	{
-		return $value;
-	}
-
-	$r = [];
-
-	foreach ((array)$value as $k => $v)
-	{
-		$r[$k] = obj_to_arr($v);
-	}
-
-	return $r;
-}
-
-/**
  * Request instance getter
  *
  * @return Request
