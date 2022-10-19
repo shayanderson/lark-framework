@@ -285,9 +285,9 @@ class Request extends Factory\Singleton
 	/**
 	 * JSON object getter
 	 *
-	 * @return stdClass
+	 * @return array|stdClass
 	 */
-	public function jsonObject(): stdClass
+	public function jsonObject(bool $returnArray = false): array|stdClass
 	{
 		if (!is_object($this->json()))
 		{
@@ -295,7 +295,7 @@ class Request extends Factory\Singleton
 			res()->json(['message' => 'Request body must be JSON object']);
 		}
 
-		return $this->json();
+		return $this->json($returnArray);
 	}
 
 	/**
