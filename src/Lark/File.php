@@ -90,10 +90,36 @@ class File
 	 *
 	 * @return mixed
 	 */
-	public function read()
+	public function &read()
 	{
 		$this->existsOrException();
+		$this->readableOrException();
+
 		return file_get_contents($this->path());
+	}
+
+	/**
+	 * Check if file is readable
+	 *
+	 * @return boolean
+	 */
+	public function readable(): bool
+	{
+		return is_readable($this->path());
+	}
+
+	/**
+	 * Check if file is readable, if not throw exception
+	 *
+	 * @return void
+	 * @throws Exception If file is not readable
+	 */
+	public function readableOrException(): void
+	{
+		if (!$this->readable())
+		{
+			throw new Exception('File "' . $this->path . '" is not readable');
+		}
 	}
 
 	/**
