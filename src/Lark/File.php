@@ -90,7 +90,7 @@ class File
 	 *
 	 * @return mixed
 	 */
-	public function &read()
+	public function read()
 	{
 		$this->existsOrException();
 		$this->readableOrException();
