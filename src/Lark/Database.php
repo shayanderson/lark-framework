@@ -83,6 +83,31 @@ class Database
 	}
 
 	/**
+	 * Execute collection aggregation pipeline
+	 *
+	 * @param array $pipeline
+	 * @param array $options
+	 * @return array
+	 */
+	public function aggregate(array $pipeline, array $options = []): array
+	{
+		$this->optionsReadConcern($options);
+		$timer = new Timer;
+
+		return $this->debug(
+			Convert::cursorToArray(
+				$this->collection()->aggregate($pipeline, $options)
+			),
+			__METHOD__,
+			[
+				'pipeline' => $pipeline,
+				'options' => $options
+			],
+			$timer
+		);
+	}
+
+	/**
 	 * Bulk write
 	 *
 	 * @param string $operation

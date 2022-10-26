@@ -59,10 +59,10 @@ class Convert
 	/**
 	 * Convert MongoDB cursor to array
 	 *
-	 * @param Cursor $cursor
+	 * @param Cursor|Traversable $cursor
 	 * @return array
 	 */
-	public static function &cursorToArray(Cursor $cursor): array
+	public static function &cursorToArray(Cursor|Traversable $cursor): array
 	{
 		$a = [];
 

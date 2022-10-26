@@ -7,4 +7,4 @@
  * @link <https://github.com/shayanderson/lark-framework>
 */
 
-const LARK_VERSION = '0.7.1';
+const LARK_VERSION = '0.8.0';
