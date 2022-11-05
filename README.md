@@ -262,6 +262,15 @@ router()->get('/api/users', function(){});
 
 If the HTTP request is `/api/users` then both the middleware action and route action would be executed.
 
+#### Middleware Execution Order
+
+Middleware is always executed in the following order:
+
+1. Always execute (`router()->bind(...)`)
+2. Execute mapped on matched route (`router()->map(...)`)
+3. Execute on matched route (`router()->matched(...)`)
+4. After middleware (`router()->after(...)`)
+
 #### Route Group Middleware
 
 Middleware can be defined to be used only on a specific route group. Route group middleware actions are only executed if a group route is matched.
