@@ -496,7 +496,21 @@ app()->use('validator.rule.string.beginWithEndWith', App\Validator\BeginWithEndW
 
 ## Environment Configuration
 
-`Lark\Env` is for app environment configuration. The helper function [`env()`](#helper-env) is available.
+`Lark\Env` is used for app environment variables and configuration. The helper function [`env()`](#helper-env) is available.
+
+Example read `PATH` environment variable.
+
+```php
+$path = env('PATH');
+
+// or use default value "/my/path" if environment variable does not exist
+$path2 = env('PATH2', '/my/path');
+
+// for required environment vars do not use a default value argument
+// which will throw exception if the environment var does not exist
+$path2 = env('PATH2');
+// Lark\Exception exception thrown: Invalid env variable key "PATH2"
+```
 
 Example `.env` file.
 
@@ -505,7 +519,7 @@ DB_USER=myuser
 DB_PWD=secret
 ```
 
-Example usage.
+Example `.env` file usage.
 
 ```php
 // load from file (bootstrap)
@@ -513,14 +527,6 @@ Lark\Env::getInstance()->load(DIR_ROOT . '/.env');
 
 $dbUser = env('DB_USER'); // myuser
 $dbPassword = env('DB_PWD'); // secret
-
-// return default value "default" if key does not exist
-$dbName = env('DB_NAME', 'default');
-
-// for required env keys do not use a default value argument
-// which will throw exception if key does not exist
-$dbHost = env('DB_HOST');
-// Lark\Exception exception thrown: Invalid key "DB_HOST"
 ```
 
 Other `Lark\Env` methods: `fromArray(array $array)`, `has(string $key): bool` and `toArray(): array`.

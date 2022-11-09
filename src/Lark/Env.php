@@ -29,7 +29,7 @@ class Env extends Factory\Singleton
 	 */
 	protected function __init()
 	{
-		self::$map = new Map;
+		self::$map = new Map(getenv());
 	}
 
 	/**
