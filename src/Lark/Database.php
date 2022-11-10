@@ -113,9 +113,15 @@ class Database
 	 * @param string $operation
 	 * @param array $documents
 	 * @param array $options
+	 * @param string $updateOperator
 	 * @return array{0: int, 1: string[]} [affectd count, ids]
 	 */
-	private function bulkWrite(string $operation, array $documents, array $options): array
+	private function bulkWrite(
+		string $operation,
+		array $documents,
+		array $options,
+		string $updateOperator = '$set'
+	): array
 	{
 		if (!$documents)
 		{
@@ -158,7 +164,7 @@ class Database
 				$operation => [
 					['_id' => $id], // filter
 					($operation === 'updateOne'
-						? ['$set' => $doc] // update
+						? [$updateOperator => $doc] // update
 						: $doc // other
 					),
 					$options
@@ -1246,9 +1252,15 @@ class Database
 	 * @param array $filter
 	 * @param array|object $update
 	 * @param array $options
+	 * @param string $operator
 	 * @return integer Affected
 	 */
-	public function update(array $filter, $update, array $options = []): int
+	public function update(
+		array $filter,
+		$update,
+		array $options = [],
+		string $operator = '$set'
+	): int
 	{
 		$this->optionsWriteConcern($options);
 		Convert::inputIdToObjectId($filter);
@@ -1273,7 +1285,7 @@ class Database
 
 		if (
 			($res = $this->collection()->updateMany($filter, [
-				'$set' => $update
+				$operator => $update
 			], $options))
 			&& ($res = $res->getModifiedCount())
 		)
@@ -1299,12 +1311,14 @@ class Database
 	 * @param array $documents
 	 * @param array $options
 	 * @param bool $returnAffected Return affected count like `[affected, [ids]]`
+	 * @param string $operator
 	 * @return array Document IDs or affected count with IDs like `[affected, [ids]]`
 	 */
 	public function updateBulk(
 		array $documents,
 		array $options = [],
-		$returnAffected = false
+		$returnAffected = false,
+		string $operator = '$set'
 	): array
 	{
 		$this->optionsWriteConcern($options);
@@ -1318,8 +1332,8 @@ class Database
 
 		return $this->debug(
 			$returnAffected
-				? $this->bulkWrite('updateOne', $documents, $options)
-				: $this->bulkWrite('updateOne', $documents, $options)[1],
+				? $this->bulkWrite('updateOne', $documents, $options, $operator)
+				: $this->bulkWrite('updateOne', $documents, $options, $operator)[1],
 			__METHOD__,
 			[
 				'documents' => $documents,
@@ -1335,9 +1349,10 @@ class Database
 	 * @param string|int $id
 	 * @param array|object $update
 	 * @param array $options
+	 * @param string $operator
 	 * @return array|null Updated document
 	 */
-	public function updateId($id, $update, array $options = []): ?array
+	public function updateId($id, $update, array $options = [], string $operator = '$set'): ?array
 	{
 		if (!$id)
 		{
@@ -1348,7 +1363,7 @@ class Database
 		$timer = new Timer;
 
 		return $this->debug(
-			$this->updateOne(['_id' => Convert::idToObjectId($id)], $update, $options),
+			$this->updateOne(['_id' => Convert::idToObjectId($id)], $update, $options, $operator),
 			__METHOD__,
 			[
 				'id' => $id,
@@ -1367,7 +1382,12 @@ class Database
 	 * @param array $options
 	 * @return array|null Update document
 	 */
-	public function updateOne(array $filter, $update, array $options = []): ?array
+	public function updateOne(
+		array $filter,
+		$update,
+		array $options = [],
+		string $operator = '$set'
+	): ?array
 	{
 		$this->optionsModelFilter($options);
 		$this->optionsReadConcern($options);
@@ -1395,7 +1415,7 @@ class Database
 			$this->constraintRefFk([$update]);
 		}
 
-		$doc = $this->collection()->findOneAndUpdate($filter, ['$set' => $update], $options);
+		$doc = $this->collection()->findOneAndUpdate($filter, [$operator => $update], $options);
 
 		return $this->debug(
 			$doc ? Convert::bsonDocToArray($doc) : null,

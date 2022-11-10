@@ -774,6 +774,13 @@ $newDoc = $db->updateId('62ba4fd034faaf6fc132ef55', ['role' => 'admin2']);
 $newDoc = $db->updateOne(['name' => 'Test2'], ['role' => 'admin']);
 ```
 
+By default update methods used the `$set` operator for updates, like `['$set' => ['role' => 'admin]]`. This operator can be changed, for example:
+
+```php
+// increment visits by 1
+$newDoc = $db->updateOne(['name' => 'Test2'], ['visits' => 1], operator: '$inc');
+```
+
 #### Replace Documents
 
 ```php
