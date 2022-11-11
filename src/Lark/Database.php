@@ -114,7 +114,7 @@ class Database
 	 * @param array $documents
 	 * @param array $options
 	 * @param string $updateOperator
-	 * @return array{0: int, 1: string[]} [affectd count, ids]
+	 * @return array{0: int, 1: string[]} [affected count, ids]
 	 */
 	private function bulkWrite(
 		string $operation,
@@ -164,7 +164,7 @@ class Database
 				$operation => [
 					['_id' => $id], // filter
 					($operation === 'updateOne'
-						? [$updateOperator => $doc] // update
+						? $this->updateQueryModel($doc, $updateOperator) // update
 						: $doc // other
 					),
 					$options
@@ -1282,9 +1282,11 @@ class Database
 		$aff = 0;
 
 		if (
-			($res = $this->collection()->updateMany($filter, [
-				$operator => $update
-			], $options))
+			($res = $this->collection()->updateMany(
+				$filter,
+				$this->updateQueryModel($update, $operator),
+				$options
+			))
 			&& ($res = $res->getModifiedCount())
 		)
 		{
@@ -1413,7 +1415,11 @@ class Database
 			$this->constraintRefFk([$update]);
 		}
 
-		$doc = $this->collection()->findOneAndUpdate($filter, [$operator => $update], $options);
+		$doc = $this->collection()->findOneAndUpdate(
+			$filter,
+			$this->updateQueryModel($update, $operator),
+			$options
+		);
 
 		return $this->debug(
 			$doc ? Convert::bsonDocToArray($doc) : null,
@@ -1425,5 +1431,42 @@ class Database
 			],
 			$timer
 		);
+	}
+
+	/**
+	 * Update query for models with updated ($update) fields
+	 *
+	 * @param array|object $update
+	 * @param string $operator
+	 * @return array
+	 */
+	private function updateQueryModel($update, string $operator): array
+	{
+		$schemaUpdatedFields = [];
+		if ($this->model)
+		{
+			$schemaUpdatedFields = $this->model->schema()->getUpdatedFields();
+		}
+
+		if (strtolower($operator) === '$set' || empty($schemaUpdatedFields))
+		{
+			// no model updated ($update) fields
+			return [$operator => $update];
+		}
+
+		$update = (array)$update;
+
+		$updatedFields = [];
+		foreach ($schemaUpdatedFields as $updatedF)
+		{
+			if (array_key_exists($updatedF, $update))
+			{
+				$updatedFields[$updatedF] = $update[$updatedF];
+				unset($update[$updatedF]);
+			}
+		}
+
+		// set '$set' => [updated fields]
+		return [$operator => $update, '$set' => $updatedFields];
 	}
 }

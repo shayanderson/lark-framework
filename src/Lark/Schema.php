@@ -80,6 +80,13 @@ class Schema
 	private array $schemaOrig;
 
 	/**
+	 * Updated ($update) fields
+	 *
+	 * @var array
+	 */
+	private array $updated = [];
+
+	/**
 	 * Init
 	 *
 	 * @param array $schema
@@ -169,6 +176,7 @@ class Schema
 						}
 						foreach ($fields as $f => $type)
 						{
+							$this->updated[] = $f;
 							$this->callbacks[1][$f] = function () use (&$type)
 							{
 								return self::getTime($type);
@@ -394,6 +402,16 @@ class Schema
 		}
 
 		throw new Exception('Schema invalid time type "' . $type . '"');
+	}
+
+	/**
+	 * Updated ($update) fields getter
+	 *
+	 * @return array
+	 */
+	public function getUpdatedFields(): array
+	{
+		return $this->updated;
 	}
 
 	/**
