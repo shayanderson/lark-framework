@@ -882,9 +882,6 @@ class Database
 	 */
 	public function insert(array $documents, array $options = []): array
 	{
-		$this->optionsWriteConcern($options);
-		$timer = new Timer;
-
 		if (!$documents) // avoid MongoDB exception "$documents is empty"
 		{
 			return $this->debug([], __METHOD__ . ' ($documents is empty, nothing to do)');
@@ -896,6 +893,8 @@ class Database
 			$this->constraintRefFk($documents);
 		}
 
+		$this->optionsWriteConcern($options);
+		$timer = new Timer;
 		Convert::inputIdToObjectIdArray($documents);
 		$ids = [];
 
@@ -930,10 +929,6 @@ class Database
 	 */
 	public function insertOne($document, array $options = []): ?string
 	{
-		$this->optionsWriteConcern($options);
-		Convert::inputIdToObjectId($document);
-		$timer = new Timer;
-
 		if (!$document) // empty document
 		{
 			return $this->debug(null, __METHOD__ . ' ($document is empty, nothing to do)');
@@ -945,6 +940,9 @@ class Database
 			$this->constraintRefFk([$document]);
 		}
 
+		$this->optionsWriteConcern($options);
+		Convert::inputIdToObjectId($document);
+		$timer = new Timer;
 		$id = null;
 
 		if (
