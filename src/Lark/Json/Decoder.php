@@ -36,16 +36,6 @@ class Decoder
 		int $flags = 0
 	)
 	{
-		$value = json_decode($json, $associative, $depth, $flags);
-
-		if (json_last_error() !== JSON_ERROR_NONE)
-		{
-			throw new Exception('Invalid JSON: ' . json_last_error_msg(), [
-				'json' => $json,
-				'error' => json_last_error_msg()
-			]);
-		}
-
-		return $value;
+		return json_decode($json, $associative, $depth, $flags | JSON_THROW_ON_ERROR);
 	}
 }

@@ -147,4 +147,28 @@ class File
 
 		return file_put_contents($this->path(), $data, $flags) !== false;
 	}
+
+	/**
+	 * Check if file is writable
+	 *
+	 * @return boolean
+	 */
+	public function writable(): bool
+	{
+		return is_writable($this->path());
+	}
+
+	/**
+	 * Check if file is writable, if not throw exception
+	 *
+	 * @return void
+	 * @throws Exception If file is not writable
+	 */
+	public function writableOrException(): void
+	{
+		if (!$this->writable())
+		{
+			throw new Exception('File "' . $this->path . '" is not writable');
+		}
+	}
 }
