@@ -14,7 +14,6 @@ use Lark\Cli;
 use Lark\Cli\Console;
 use Lark\Cli\Output;
 use Lark\Database\Connection;
-use Lark\Database\Constraint;
 use Lark\File;
 
 /**
@@ -522,7 +521,7 @@ class Command
 				if ($type == 'missing')
 				{
 					$out->colorYellow->echo(
-						'(missing) ' . Constraint::TYPE_REF_DELETE . ' in ',
+						'(missing) $refs.delete in ',
 						''
 					);
 				}

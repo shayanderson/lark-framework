@@ -1176,7 +1176,7 @@ Database model schema constraints can be used as database constraints on referen
 
 #### Ref Foreign Key Constraint
 
-The `$ref:fk` constraint verifies foreign keys, can be set in any model schema and is used with the `Database` methods: `insert()`, `insertOne()`, `replaceBulk()`, `replaceId()`, `replaceOne()`, `update()`, `updateBulk()`, `updateId()` and `updateOne()`.
+The `$refs.fk` constraint verifies foreign keys, can be set in any model schema and is used with the `Database` methods: `insert()`, `insertOne()`, `replaceBulk()`, `replaceId()`, `replaceOne()`, `update()`, `updateBulk()`, `updateId()` and `updateOne()`.
 
 ```php
 class UserLog extends Model
@@ -1185,9 +1185,11 @@ class UserLog extends Model
     public static function &schema(): Schema
     {
         return parent::schema([
-            '$ref:fk' => [
-                // collection => [localField => foreignField, ...]
-                'users' => ['userId' => 'id']
+            '$refs' => [
+                'fk' => [
+                    // collection => [localField => foreignField, ...]
+                    'users' => ['userId' => 'id']
+                ]
             ],
             'id' => ['string', 'id'],
             'userId' => ['string', 'notEmpty'],
@@ -1207,22 +1209,24 @@ Example document in `users.log`:
 }
 ```
 
-Now when a model database insert/replace/update method is called the `$ref:fk` constraint above will verify the collection `users.log` field `userId` value exists as a foreign key in the `users` collection field `id` (`_id`).
+Now when a model database insert/replace/update method is called the `$refs.fk` constraint above will verify the collection `users.log` field `userId` value exists as a foreign key in the `users` collection field `id` (`_id`).
 
 > If foreign key constraint verification fails a `Lark\Database\Constraint\DatabaseConstraintException` exception will be thrown with a message like `Failed to insert or update document(s), foreign key constraint failed for "userId"`
 
-> The `$ref:fk` foreign fields (`foreignField`) must always be a MongoDB `ObjectId` and foreign key verification on any other type will fail.
+> The `$refs.fk` foreign fields (`foreignField`) must always be a MongoDB `ObjectId` and foreign key verification on any other type will fail.
 
-> The `$ref:fk` constraint will always verify a foreign key, even when the local field value is `null`, but this can be disabled by using the `nullable$` prefix on the local field name, like `nullable$userId`, which means all local field null values will not have the foreign key verified.
+> The `$refs.fk` constraint will always verify a foreign key, even when the local field value is `null`, but this can be disabled by using the `nullable$` prefix on the local field name, like `nullable$userId`, which means all local field null values will not have the foreign key verified.
 
-The `$ref:fk` constraint can also be used on an array of foreign keys in an array:
+The `$refs.fk` constraint can also be used on an array of foreign keys in an array:
 
 ```php
 // class UserGroup (model)
 $schema = new Schema([
-    '$ref:fk' => [
-        // collection => [localField => foreignField, ...]
-        'users' => ['users.$' => 'id']
+    '$refs' => [
+        'fk' => [
+            // collection => [localField => foreignField, ...]
+            'users' => ['users.$' => 'id']
+        ]
     ],
     // ...
 ]);
@@ -1238,16 +1242,18 @@ Example document in `users.groups`:
 }
 ```
 
-Now when a model database insert/replace/update method is called the `$ref:fk` constraint above will verify each value in the collection `users.groups` field `users` array exists as a foreign key in the `users` collection field `id` (`_id`).
+Now when a model database insert/replace/update method is called the `$refs.fk` constraint above will verify each value in the collection `users.groups` field `users` array exists as a foreign key in the `users` collection field `id` (`_id`).
 
-The `$ref:fk` constraint can also be used on objects in an array that have foreign keys:
+The `$refs.fk` constraint can also be used on objects in an array that have foreign keys:
 
 ```php
 // class UserAllowed (model)
 $schema = new Schema([
-    '$ref:fk' => [
-        // collection => [localField => foreignField, ...]
-        'users' => ['users.$.id' => 'id']
+    '$refs' => [
+        'fk' => [
+            // collection => [localField => foreignField, ...]
+            'users' => ['users.$.id' => 'id']
+        ]
     ],
     // ...
 ]);
@@ -1266,33 +1272,37 @@ Example document in `users.allowed`
 }
 ```
 
-Now when a model database insert/replace/update method is called the `$ref:fk` constraint above will verify the collection `users.allowed` field `users` array to ensure each object field `id` value exists as a foreign key in the `users` collection field `id` (`_id`).
+Now when a model database insert/replace/update method is called the `$refs.fk` constraint above will verify the collection `users.allowed` field `users` array to ensure each object field `id` value exists as a foreign key in the `users` collection field `id` (`_id`).
 
-The `$ref:fk` constraint can be used with multiple collections and fields:
+The `$refs.fk` constraint can be used with multiple collections and fields:
 
 ```php
 $schema = new Schema([
-    '$ref:fk' => [
-        // collection => [localField => foreignField, ...]
-        'users' => [
-            'userId' => 'id',
-            'users.$' => 'id',
-            'usersAllowed.$.id' => 'id'
+    '$refs' => [
+        'fk' => [
+            // collection => [localField => foreignField, ...]
+            'users' => [
+                'userId' => 'id',
+                'users.$' => 'id',
+                'usersAllowed.$.id' => 'id'
+            ]
         ]
     ],
     // ...
 ]);
 ```
 
-The `$ref:fk` constraint can also be used with the same model:
+The `$refs.fk` constraint can also be used with the same model:
 
 ```php
 // class User (model)
 $schema = new Schema([
-    '$ref:fk' => [
-        // allow managerId to be null (no manager)
-        // verify FK users.id exists when users.managerId exists
-        'users' => ['nullable$managerId' => 'id']
+    '$refs' => [
+        'fk' => [
+            // allow managerId to be null (no manager)
+            // verify FK users.id exists when users.managerId exists
+            'users' => ['nullable$managerId' => 'id']
+        ]
     ],
     'id' => ['string', 'id'],
     'managerId' => 'string'
@@ -1301,7 +1311,7 @@ $schema = new Schema([
 
 #### Ref Delete Constraint
 
-The `$ref:delete` constraint allows delete cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
+The `$refs.delete` constraint allows delete cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
 
 ```php
 class User extends Model
@@ -1310,9 +1320,11 @@ class User extends Model
     public static function &schema(): Schema
     {
         return parent::schema([
-            '$ref:delete' => [
-                // collection => [foreign fields]
-                'users.log' => ['userId']
+            '$refs' => [
+                'delete' => [
+                    // collection => [foreign fields]
+                    'users.log' => ['userId']
+                ]
             ],
             'id' => ['string', 'id'],
             'name' => ['string', 'notEmpty']
@@ -1331,7 +1343,7 @@ Example document in `users.log`:
 }
 ```
 
-Now when the model database method `deleteIds()` is called the `$ref:delete` constraint above will trigger a database delete operation to delete all documents in the `users.log` collection with `userId: {$in: [ids]}`.
+Now when the model database method `deleteIds()` is called the `$refs.delete` constraint above will trigger a database delete operation to delete all documents in the `users.log` collection with `userId: {$in: [ids]}`.
 
 > The equivalent in MongoDB shell would be:
 >
@@ -1340,13 +1352,15 @@ Now when the model database method `deleteIds()` is called the `$ref:delete` con
 > db.users.log.delete( { userId: { $in: [ids] } } )
 > ```
 
-The `$ref:delete` constraint can also be used to pull (`$pullAll`) IDs from an array:
+The `$refs.delete` constraint can also be used to pull (`$pullAll`) IDs from an array:
 
 ```php
 $schema = new Schema([
-    '$ref:delete' => [
-        // collection => [foreign fields]
-        'users.groups' => ['users.$']
+    '$refs' => [
+        'delete' => [
+            // collection => [foreign fields]
+            'users.groups' => ['users.$']
+        ]
     ],
     // ...
 ]);
@@ -1362,7 +1376,7 @@ Example document in `users.groups`:
 }
 ```
 
-Now when the model database method `deleteIds()` is called the `$ref:delete` constraint above will trigger a database update operation to `$pullAll` IDs in the collection `users.groups` field `users`.
+Now when the model database method `deleteIds()` is called the `$refs.delete` constraint above will trigger a database update operation to `$pullAll` IDs in the collection `users.groups` field `users`.
 
 > The equivalent in MongoDB shell would be:
 >
@@ -1375,13 +1389,15 @@ Now when the model database method `deleteIds()` is called the `$ref:delete` con
 > )
 > ```
 
-The `$ref:delete` constraint can also be used to pull (`$pull`) objects from an array based on an object field value:
+The `$refs.delete` constraint can also be used to pull (`$pull`) objects from an array based on an object field value:
 
 ```php
 $schema = new Schema([
-    '$ref:delete' => [
-        // collection => [foreign fields]
-        'users.allowed' => ['users.$.id']
+    '$refs' => [
+        'delete' => [
+            // collection => [foreign fields]
+            'users.allowed' => ['users.$.id']
+        ]
     ],
     // ...
 ]);
@@ -1400,7 +1416,7 @@ Example document in `users.allowed`
 }
 ```
 
-Now when the model database method `deleteIds()` is called the `$ref:delete` constraint above will trigger a database update operation to `$pull` all objects in collection `users.groups` field `users` based on object field `id` value.
+Now when the model database method `deleteIds()` is called the `$refs.delete` constraint above will trigger a database update operation to `$pull` all objects in collection `users.groups` field `users` based on object field `id` value.
 
 > The equivalent in MongoDB shell would be:
 >
@@ -1413,15 +1429,17 @@ Now when the model database method `deleteIds()` is called the `$ref:delete` con
 > )
 > ```
 
-The `$ref:delete` constraint can be used with multiple collections and fields:
+The `$refs.delete` constraint can be used with multiple collections and fields:
 
 ```php
 $schema = new Schema([
-    '$ref:delete' => [
-        // collection => [foreign fields]
-        'users.log' => ['userId', 'userId2'],
-        'users.groups' => ['users.$'],
-        'users.allowed' => ['users.$.id']
+    '$refs' => [
+        'delete' => [
+            // collection => [foreign fields]
+            'users.log' => ['userId', 'userId2'],
+            'users.groups' => ['users.$'],
+            'users.allowed' => ['users.$.id']
+        ]
     ],
     // ...
 ]);

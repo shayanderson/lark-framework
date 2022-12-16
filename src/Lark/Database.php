@@ -12,7 +12,6 @@ namespace Lark;
 
 use Lark\Database\Connection;
 use Lark\Database\ConnectionOptions;
-use Lark\Database\Constraint;
 use Lark\Database\Convert;
 use Lark\Database\DatabaseException;
 use Lark\Database\Field;
@@ -247,7 +246,7 @@ class Database
 	 */
 	private function constraintRefFk(array $documents): void
 	{
-		if (!$this->model->schema()->hasConstraint(Constraint::TYPE_REF_FK))
+		if (!$this->model->schema()->hasConstraint('fk'))
 		{
 			return;
 		}
@@ -255,7 +254,7 @@ class Database
 		$options = [];
 		$this->optionsReadConcern($options);
 
-		foreach ($this->model->schema()->getConstraints(Constraint::TYPE_REF_FK) as $c)
+		foreach ($this->model->schema()->getConstraints('fk') as $c)
 		{
 			/** @var \Lark\Database\Constraint\RefFk $c */
 			$c->verify(
@@ -284,7 +283,7 @@ class Database
 	{
 		if (
 			!$this->hasModel()
-			|| !$this->model->schema()->hasConstraint(Constraint::TYPE_REF_DELETE)
+			|| !$this->model->schema()->hasConstraint('delete')
 		)
 		{
 			// no ref delete constraint
@@ -296,7 +295,7 @@ class Database
 		$this->optionsWriteConcern($options);
 		$aff = 0;
 
-		foreach ($this->model->schema()->getConstraints(Constraint::TYPE_REF_DELETE) as $c)
+		foreach ($this->model->schema()->getConstraints('delete') as $c)
 		{
 			/** @var \Lark\Database\Constraint\RefDelete $c */
 			$aff += $c->delete(

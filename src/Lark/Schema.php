@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace Lark;
 
 use Closure;
-use Lark\Database\Constraint;
 use Lark\Database\Constraint\RefDelete;
 use Lark\Database\Constraint\RefFk;
 use Lark\Map\Path as MapPath;
@@ -148,21 +147,35 @@ class Schema
 						}
 						break;
 
-					case Constraint::TYPE_REF_DELETE:
-						// db constraint ref delete
-						foreach ($schema[$field] as $coll => $fields)
+					case '$refs':
+						foreach ($schema[$field] as $type => $constraints)
 						{
-							$this->constraints[$field][] = new RefDelete($coll, $fields);
-						}
-						break;
-
-					case Constraint::TYPE_REF_FK:
-						// db constraint ref fk
-						foreach ($schema[$field] as $coll => $fields)
-						{
-							foreach ((array)$fields as $lf => $ff)
+							if ($type == 'clear')
 							{
-								$this->constraints[$field][] = new RefFk($coll, $lf, $ff);
+								#todo
+							}
+							else if ($type == 'delete')
+							{
+								// db constraint ref delete
+								foreach ($constraints as $coll => $fields)
+								{
+									$this->constraints['delete'][] = new RefDelete($coll, $fields);
+								}
+							}
+							else if ($type == 'fk')
+							{
+								// db constraint ref fk
+								foreach ($constraints as $coll => $fields)
+								{
+									foreach ((array)$fields as $lf => $ff)
+									{
+										$this->constraints['fk'][] = new RefFk($coll, $lf, $ff);
+									}
+								}
+							}
+							else
+							{
+								throw new Exception('Invalid schema $refs type "' . $type . '"');
 							}
 						}
 						break;

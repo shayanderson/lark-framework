@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Cli\Console;
 
-use Lark\Database\Constraint;
 use Lark\Database\Constraint\RefFk;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -75,8 +74,8 @@ class SchemaFile extends File
 		);
 
 		$refs = [
-			Constraint::TYPE_REF_DELETE => [],
-			Constraint::TYPE_REF_FK => [],
+			'delete' => [],
+			'fk' => [],
 			'missing' => []
 		];
 
@@ -88,8 +87,8 @@ class SchemaFile extends File
 			$schema = require $path;
 
 			foreach ([
-				Constraint::TYPE_REF_DELETE,
-				Constraint::TYPE_REF_FK
+				'delete',
+				'fk'
 			] as $type)
 			{
 				if (isset($schema[$type]))
@@ -102,8 +101,8 @@ class SchemaFile extends File
 		}
 
 		// detect missing $ref:delete constraints
-		$refsDel = &$refs[Constraint::TYPE_REF_DELETE];
-		foreach ($refs[Constraint::TYPE_REF_FK] as $lColl => $schema)
+		$refsDel = &$refs['delete'];
+		foreach ($refs['fk'] as $lColl => $schema)
 		{
 			foreach ($schema as $fColl => $fields)
 			{
@@ -138,8 +137,8 @@ class SchemaFile extends File
 			}
 		}
 
-		ksort($refs[Constraint::TYPE_REF_DELETE]);
-		ksort($refs[Constraint::TYPE_REF_FK]);
+		ksort($refs['delete']);
+		ksort($refs['fk']);
 		ksort($refs['missing']);
 
 		return $refs;
