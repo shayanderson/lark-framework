@@ -91,11 +91,11 @@ class SchemaFile extends File
 				'fk'
 			] as $type)
 			{
-				if (isset($schema[$type]))
+				if (isset($schema['$refs'][$type]))
 				{
-					$name = $name = substr($pathRel, 0, -4); // rm ext
+					$name = substr($pathRel, 0, -4); // rm ext
 
-					$refs[$type][$name] = $schema[$type];
+					$refs[$type][$name] = $schema['$refs'][$type];
 				}
 			}
 		}
