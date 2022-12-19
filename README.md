@@ -1174,7 +1174,7 @@ In the above examples the `createdAt` field will be set once (using schema defau
 
 Database model schema constraints can be used as database constraints on references like verifying foreign keys and delete cascades.
 
-#### Ref Foreign Key Constraint
+#### Refs Foreign Key Constraint
 
 The `$refs.fk` constraint verifies foreign keys, can be set in any model schema and is used with the `Database` methods: `insert()`, `insertOne()`, `replaceBulk()`, `replaceId()`, `replaceOne()`, `update()`, `updateBulk()`, `updateId()` and `updateOne()`.
 
@@ -1309,7 +1309,50 @@ $schema = new Schema([
 ]);
 ```
 
-#### Ref Delete Constraint
+#### Refs Clear Constraint
+
+The `$refs.clear` constraint allows clear field cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
+
+```php
+class User extends Model
+{
+    const DBS = 'default$app$users';
+    public static function &schema(): Schema
+    {
+        return parent::schema([
+            '$refs' => [
+                'clear' => [
+                    // collection => [foreign fields]
+                    'users.log' => ['userId']
+                ]
+            ],
+            'id' => ['string', 'id'],
+            'name' => ['string', 'notEmpty']
+        ]);
+    }
+}
+```
+
+Example document in `users.log`:
+
+```
+{
+    "id": "abc",
+    "userId": "62ba4fd034faaf6fc132ef54",
+    "message": "test"
+}
+```
+
+Now when the model database method `deleteIds()` is called the `$refs.clear` constraint above will trigger a database clear (update operation) to clear all document `userId` fields in the `users.log` collection with `userId: {$in: [ids]}`.
+
+> The equivalent in MongoDB shell would be:
+>
+> ```
+> db.users.delete( { _id: { $in: [ids] } } )
+> db.users.log.updateMany( { userId: { $in: [ids] } }, { $set: { userId: null } } )
+> ```
+
+#### Refs Delete Constraint
 
 The `$refs.delete` constraint allows delete cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
 

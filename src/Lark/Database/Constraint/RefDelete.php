@@ -165,11 +165,6 @@ class RefDelete extends Constraint
 
 				$fn_update($ffParts);
 
-				// $fn_update(
-				// 	array_filter(explode('.', $foreignField))
-				// );
-				// count(explode('.', $foreignField)) > 3
-
 				if (!$update)
 				{
 					throw new DatabaseConstraintException(
@@ -191,7 +186,6 @@ class RefDelete extends Constraint
 				}
 				catch (\Throwable $th)
 				{
-					p(__METHOD__, $filter, $update, $foreignField);
 					throw $th;
 				}
 

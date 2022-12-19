@@ -239,6 +239,60 @@ class Database
 	}
 
 	/**
+	 * Ref clear + delete constraint
+	 *
+	 * @param array $ids
+	 * @return integer Affected
+	 */
+	private function constraintRefClearAndDelete(array $ids): int
+	{
+		$hasConstraintClear = $this->model->schema()->hasConstraint('clear');
+		$hasConstraintDel = $this->model->schema()->hasConstraint('delete');
+
+		if (
+			!$this->hasModel()
+			|| (!$hasConstraintClear && !$hasConstraintDel)
+		)
+		{
+			// no ref clear or delete constraints
+			return 0;
+		}
+
+		$options = [];
+		$this->optionsReadConcern($options);
+		$this->optionsWriteConcern($options);
+		$aff = 0;
+
+		foreach ([
+			'clear' => $hasConstraintClear,
+			'delete' => $hasConstraintDel
+		] as $constraint => $hasConstraint)
+		{
+			if ($hasConstraint)
+			{
+				foreach ($this->model->schema()->getConstraints($constraint) as $c)
+				{
+					$aff += $c->{$constraint}(
+						$this,
+						$ids,
+						$options,
+						function (
+							$results,
+							string $message,
+							array $context
+						)
+						{
+							return $this->debug($results, $message, $context);
+						}
+					);
+				}
+			}
+		}
+
+		return $aff;
+	}
+
+	/**
 	 * Ref fk constraint
 	 *
 	 * @param array $documents
@@ -271,49 +325,6 @@ class Database
 				}
 			);
 		}
-	}
-
-	/**
-	 * Ref delete constraint
-	 *
-	 * @param array $ids
-	 * @return integer Affected
-	 */
-	private function constraintRefDelete(array $ids): int
-	{
-		if (
-			!$this->hasModel()
-			|| !$this->model->schema()->hasConstraint('delete')
-		)
-		{
-			// no ref delete constraint
-			return 0;
-		}
-
-		$options = [];
-		$this->optionsReadConcern($options);
-		$this->optionsWriteConcern($options);
-		$aff = 0;
-
-		foreach ($this->model->schema()->getConstraints('delete') as $c)
-		{
-			/** @var \Lark\Database\Constraint\RefDelete $c */
-			$aff += $c->delete(
-				$this,
-				$ids,
-				$options,
-				function (
-					$results,
-					string $message,
-					array $context
-				)
-				{
-					return $this->debug($results, $message, $context);
-				}
-			);
-		}
-
-		return $aff;
 	}
 
 	/**
@@ -537,7 +548,7 @@ class Database
 				'_id' => [
 					'$in' => Convert::idsToObjectIds($ids)
 				]
-			], $options) + $this->constraintRefDelete($ids),
+			], $options) + $this->constraintRefClearAndDelete($ids),
 			__METHOD__,
 			[
 				'ids' => $ids,

@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace Lark;
 
 use Closure;
+use Lark\Database\Constraint\RefClear;
 use Lark\Database\Constraint\RefDelete;
 use Lark\Database\Constraint\RefFk;
 use Lark\Map\Path as MapPath;
@@ -152,7 +153,11 @@ class Schema
 						{
 							if ($type == 'clear')
 							{
-								#todo
+								// db constraint ref clear
+								foreach ($constraints as $coll => $fields)
+								{
+									$this->constraints['clear'][] = new RefClear($coll, $fields);
+								}
 							}
 							else if ($type == 'delete')
 							{
