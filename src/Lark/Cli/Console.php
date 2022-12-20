@@ -122,13 +122,13 @@ class Console extends \Lark\Cli
 			)
 			->option(
 				'--ignore',
-				'Use with --refs option to ignore missing delete refs,'
+				'Use with --refs option to ignore missing clear/delete refs,'
 					. ' like --ignore=users,users2'
 			)
-			->option('--missing', 'Use with --refs option to only display missing delete refs')
+			->option('--missing', 'Use with --refs option to only display missing clear/delete refs')
 			->option(
 				'--refs',
-				'Display existing and possible missing delete refs for all compiled schemas'
+				'Display existing and possible missing clear/delete refs for all compiled schemas'
 			)
 			->action([Command::class, 'schema']);
 	}

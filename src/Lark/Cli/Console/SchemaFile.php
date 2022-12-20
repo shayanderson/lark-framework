@@ -74,6 +74,7 @@ class SchemaFile extends File
 		);
 
 		$refs = [
+			'clear' => [],
 			'delete' => [],
 			'fk' => [],
 			'missing' => []
@@ -87,6 +88,7 @@ class SchemaFile extends File
 			$schema = require $path;
 
 			foreach ([
+				'clear',
 				'delete',
 				'fk'
 			] as $type)
@@ -100,7 +102,8 @@ class SchemaFile extends File
 			}
 		}
 
-		// detect missing $ref:delete constraints
+		// detect missing $refs.clear / $refs.delete constraints
+		$refsClear = &$refs['clear'];
 		$refsDel = &$refs['delete'];
 		foreach ($refs['fk'] as $lColl => $schema)
 		{
@@ -117,17 +120,35 @@ class SchemaFile extends File
 					$lf = RefFk::stripNullablePrefix($lf);
 
 					if (
-						// check foreign collection exists
-						!isset($refsDel[$fColl])
-						||
-						// check foreign collection => local collection exists
-						!isset($refsDel[$fColl][$lColl])
-						||
-						// foreign collection => local collection (must be array)
-						!is_array($refsDel[$fColl][$lColl])
-						||
-						// check if local field exists as constraint
-						!in_array($lf, $refsDel[$fColl][$lColl])
+						// clear
+						(
+							// check foreign collection exists
+							!isset($refsClear[$fColl])
+							||
+							// check foreign collection => local collection exists
+							!isset($refsClear[$fColl][$lColl])
+							||
+							// foreign collection => local collection (must be array)
+							!is_array($refsClear[$fColl][$lColl])
+							||
+							// check if local field exists as constraint
+							!in_array($lf, $refsClear[$fColl][$lColl])
+						)
+						&&
+						// delete
+						(
+							// check foreign collection exists
+							!isset($refsDel[$fColl])
+							||
+							// check foreign collection => local collection exists
+							!isset($refsDel[$fColl][$lColl])
+							||
+							// foreign collection => local collection (must be array)
+							!is_array($refsDel[$fColl][$lColl])
+							||
+							// check if local field exists as constraint
+							!in_array($lf, $refsDel[$fColl][$lColl])
+						)
 					)
 					{
 						$refs['missing'][$fColl][$lColl][] = $lf;

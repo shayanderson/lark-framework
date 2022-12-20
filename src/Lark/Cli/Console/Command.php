@@ -521,7 +521,7 @@ class Command
 				if ($type == 'missing')
 				{
 					$out->colorYellow->echo(
-						'(missing) $refs.delete in ',
+						'(missing) $refs.clear / $refs.delete in ',
 						''
 					);
 				}
