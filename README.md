@@ -455,7 +455,7 @@ $db2 = db('myconn$dbName$collectionName');
 // or: $db = db('myConn2', 'dbName', 'collectionName');
 ```
 
-> Read more in [Database](#database) and helper function [`db()`](#helper-db)
+> Read more in [Database](#database) and helper function [`db()`](#helper-db).
 
 ### Database Global Options
 
@@ -470,13 +470,13 @@ app()->use('db.options', [
     'db.deny' => ['admin', 'config', 'local'], // restrict access to databases
     'debug.dump' => false, // will include all database calls/context in debugger dumper
     'debug.log' => false, // add debug level database messages to logger
-    'find.limit' => 10_000, // find "limit" for find options
+    'find.limit' => 1_000, // find "limit" for find options
     'read.concern' => new ReadConcern, // MongoDB read concern
     'write.concern' => new WriteConcern(WriteConcern::MAJORITY) // MongoDB write concern
 ]);
 ```
 
-> Read more about Write Concern in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/write-concern/) and in the [PHP docs](https://www.php.net/manual/en/class.mongodb-driver-writeconcern.php)
+> Read more about Write Concern in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/write-concern/) and in the [PHP docs](https://www.php.net/manual/en/class.mongodb-driver-writeconcern.php).
 
 ### Database Sessions
 
@@ -607,7 +607,7 @@ if(app()->session->has('user.id'))
 }
 ```
 
-> Sessions can be stored in the database by using `Lark\Database\Session::handler()`
+> Sessions can be stored in the database by using `Lark\Database\Session::handler()`.
 
 `Lark\Request\SessionFlash` can be used to store short-term data where the data is available from when set through the following request, example:
 
@@ -850,7 +850,7 @@ $affected = $db->collectionField('tags')->push(
 $affected = $db->collectionField('tags')->rename('tagsNew');
 ```
 
-> Use dot notation for nested field names like `field1.field2`
+> Use dot notation for nested field names like `field1.field2`.
 
 ### Database Methods
 
@@ -919,7 +919,7 @@ $schema = new Schema([
 
 Schema uses [Validation Types & Rules](#validation-types--rules) for field definitions.
 
-> Options for in `$index` and `$indexes` are any field starting with `$`, like `$unique`, and more options can be found in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/method/db.collection.createIndex/#options)
+> Options for in `$index` and `$indexes` are any field starting with `$`, like `$unique`, and more options can be found in the [MongoDB docs](https://www.mongodb.com/docs/manual/reference/method/db.collection.createIndex/#options).
 
 Default field values can also be set dynamically. For nested fields use dot notation like `field.nestedfield`.
 
@@ -1101,7 +1101,7 @@ $user = (new App\Model\User)->get('62ba4fd034faaf6fc132ef55');
 $docs = (new \App\Model\User)->db()->find(['role' => 'admin']);
 ```
 
-> Important: Model classes shouldn't have any required parameters in their `Model::__construct()` method, because the Models are automatically instantiated when using model/database binding, and any required parameters will not be present
+> Important: Model classes shouldn't have any required parameters in their `Model::__construct()` method, because the Models are automatically instantiated when using model/database binding, and any required parameters will not be present.
 
 ### Model Schema Method
 
@@ -1142,6 +1142,135 @@ class ExampleModel extends Model
     }
 }
 ```
+
+### Model Database Query
+
+The model `Lark\Database\Query` class can be used for input query parameters.
+
+```php
+use Lark\Database\Query;
+use App\Model\User;
+
+$query = new Query(new User, [
+    'name' => 'test'
+]);
+
+// Database::find()
+$results = $query->find();
+
+// Database::count()
+$count = $query->count();
+```
+
+#### Query Selectors
+
+Query selectors can be used as query parameters. Match a field with field value:
+
+```php
+$query = [
+    'name' => 'test'
+];
+```
+
+[MongoDB comparison selectors](https://www.mongodb.com/docs/manual/reference/operator/query/#comparison) `$eq`, `$gt`, `$gte`, `$in`, `$lt`, `$lte`, `$ne` and `$nin` can be used like:
+
+```php
+$query = [
+    'age' => ['$gte' => 18]
+];
+```
+
+With the `$in` selector:
+
+```php
+$query = [
+    'name' => ['$in' => ['test', 'test2', 'test3']]
+];
+```
+
+With multiple selectors:
+
+```php
+$query = [
+    'age' => ['$gt' => 20, '$lt' => 100]
+];
+```
+
+#### Query Options
+
+By default queries with multiple selectors will perform a logical `AND` operation. A logical `OR` operation can be used with the `$or` option:
+
+```php
+$query = [
+    // age is greater than 20 OR less than 100
+    'age' => ['$gt' => 20, '$lt' => 100],
+    '$or' => true
+];
+```
+
+The `$filter` (or `$projection`) option can be used to filter the document fields returned from the database:
+
+```php
+$query = [
+    // only include fields "id" and "name" for each document
+    '$filter' => ['id' => 1, 'name' => 1],
+    'name' => 'test',
+    'age' => ['$gte' => 18]
+];
+
+// or fields can be excluded for each document
+$query = [
+    // exclude fields "age" and "info" for each document
+    '$filter' => ['age' => 0, 'info' => 0]
+];
+```
+
+The `$page` option can be used for pagination.
+
+```php
+// fetch first page
+$query = [
+    '$page' => 1
+];
+
+// fetch second page
+$query = [
+    '$page' => 2
+];
+```
+
+> By default the limit of documents per page is determined by the database option `find.limit`.
+
+> The default sort order of documents for the `$page` option is `["id" => 1]`, this can be overridden using the `$sort` option.
+
+The `$limit` option can be used to set the number of documents returned or to override the default documents per page when using the `$page` option.
+
+```php
+$query = [
+    '$limit' => 100
+];
+```
+
+> The `$limit` option value cannot exceed the database option `find.limit` value.
+
+The `$sort` option can be used to set the sort order or documents.
+
+```php
+// sort by "name" ASC and "age" DESC
+$query = [
+    '$sort' => ['name' => 1, 'age' => -1]
+];
+```
+
+The `$skip` option can be used to set the query skip value.
+
+```php
+$query = [
+    '$skip' => 10
+];
+```
+
+> The `$skip` option will always be overridden when used with the `$page` option.
 
 ### Auto Created and Updated Field Values
 
@@ -1211,7 +1340,7 @@ Example document in `users.log`:
 
 Now when a model database insert/replace/update method is called the `$refs.fk` constraint above will verify the collection `users.log` field `userId` value exists as a foreign key in the `users` collection field `id` (`_id`).
 
-> If foreign key constraint verification fails a `Lark\Database\Constraint\DatabaseConstraintException` exception will be thrown with a message like `Failed to insert or update document(s), foreign key constraint failed for "userId"`
+> If foreign key constraint verification fails a `Lark\Database\Constraint\DatabaseConstraintException` exception will be thrown with a message like `Failed to insert or update document(s), foreign key constraint failed for "userId"`.
 
 > The `$refs.fk` foreign fields (`foreignField`) must always be a MongoDB `ObjectId` and foreign key verification on any other type will fail.
 
@@ -1672,7 +1801,7 @@ $isValid = (new Validator([
 
 > In the example above if the schema rule `notEmpty` is not used before the `schema:array` or `schema:object` property, and the array of arrays or objects is empty, no rules will be validated/asserted.
 
-> Partial documents are not allowed inside nested schema objects or arrays
+> Partial documents are not allowed inside nested schema objects or arrays.
 
 ### Assert Callback
 
@@ -2197,7 +2326,7 @@ $db = db('myDb', 'app', 'users');
 $db = db(App\Model\User::class);
 ```
 
-> Read more in [Database Connections](#database-connections)
+> Read more in [Database Connections](#database-connections).
 
 ### Helper `dbdatetime()`
 
@@ -2234,9 +2363,9 @@ debug('test', ['info' => 'here'], 'name');
 // (new Logger('name'))->debug('test', ['info' => 'here']);
 ```
 
-> Also see [`x()`](#helper-x) helper function
+> Also see [`x()`](#helper-x) helper function.
 
-> Read more in [Debugger](#debugger) and [Logging](#logging)
+> Read more in [Debugger](#debugger) and [Logging](#logging).
 
 ### Helper `env()`
 
@@ -2246,7 +2375,7 @@ The `env()` function is an environment variables helper.
 $dbName = env('DB_NAME');
 ```
 
-> Read more in [Environment Configuration](#environment-configuration)
+> Read more in [Environment Configuration](#environment-configuration).
 
 ### Helper `f()`
 
@@ -2290,7 +2419,7 @@ Access a `Logger` instance using the `logger()` function.
 logger('channel')->info('message', ['context']);
 ```
 
-> Read more in [Logging](#logging)
+> Read more in [Logging](#logging).
 
 ### Helper `p()`
 
@@ -2326,7 +2455,7 @@ var_dump(
 // string(1) "/"
 ```
 
-> Read more in [Request](#request)
+> Read more in [Request](#request).
 
 ### Helper `res()`
 
@@ -2336,7 +2465,7 @@ Access the `Lark\Response` instance using the `res()` function.
 res()->contentType('application/json');
 ```
 
-> Read more in [Response](#response)
+> Read more in [Response](#response).
 
 ### Helper `router()`
 
@@ -2348,7 +2477,7 @@ router()->get('/', function() {
 });
 ```
 
-> Read more in [Routing](#routing)
+> Read more in [Routing](#routing).
 
 ### Helper `x()`
 
@@ -2358,6 +2487,6 @@ The `x()` function is a debugger and dumper helper. When called the `x()` functi
 x('value', ['test' => 'this']);
 ```
 
-> Also see [`debug()`](#helper-debug) helper function
+> Also see [`debug()`](#helper-debug) helper function.
 
-> Read more in [Debugger](#debugger)
+> Read more in [Debugger](#debugger).

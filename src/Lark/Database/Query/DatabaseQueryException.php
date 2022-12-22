@@ -6,5 +6,15 @@
  * @license MIT License <https://github.com/shayanderson/lark-framework/blob/master/LICENSE.md>
  * @link <https://github.com/shayanderson/lark-framework>
 */
+declare(strict_types=1);
 
-const LARK_RELEASE = '0.18.0';
+namespace Lark\Database\Query;
+
+/**
+ * Database query exception
+ *
+ * @author Shay Anderson
+ */
+class DatabaseQueryException extends \Lark\Exception
+{
+}

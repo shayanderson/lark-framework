@@ -61,7 +61,7 @@ class ConnectionOptions extends \Lark\Options
 			self::FIND_LIMIT => [
 				'int',
 				'notEmpty',
-				'default' => 10_000
+				'default' => 1_000
 			],
 			self::READ_CONCERN => [
 				'object',
