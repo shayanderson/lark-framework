@@ -134,7 +134,15 @@ abstract class Parameter
 
 				foreach ($rules as $rule)
 				{
-					if (is_array($rule))
+					if (
+						is_array($rule)
+						&& (isset($rule['fields'])
+							|| isset($rule['schema:array'])
+							|| isset(
+								$rule['schema:object']
+							)
+						)
+					)
 					{
 						$isNestedRule = true;
 						$isRuleTypeUsed = false;

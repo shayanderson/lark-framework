@@ -7,4 +7,4 @@
  * @link <https://github.com/shayanderson/lark-framework>
 */
 
-const LARK_RELEASE = '0.18.0';
+const LARK_RELEASE = '0.19.0';
