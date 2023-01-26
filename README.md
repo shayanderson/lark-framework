@@ -1561,7 +1561,7 @@ Now when the model database method `deleteIds()` is called the `$refs.delete` co
 > )
 > ```
 >
-> Note: even when multiple values are pulled from an array on a single document field MongoDB will still return and `modifiedCount: 1`
+> Note: even when multiple values are pulled from an array on a single document field MongoDB will still return `modifiedCount: 1`
 
 The `$refs.delete` constraint can also be used to pull (`$pull`) objects from an array based on an object field value:
 
@@ -1603,7 +1603,7 @@ Now when the model database method `deleteIds()` is called the `$refs.delete` co
 > )
 > ```
 >
-> Note: even when multiple values are pulled from an array on a single document field MongoDB will still return and `modifiedCount: 1`
+> Note: even when multiple objects are pulled from an array on a single document field MongoDB will still return `modifiedCount: 1`
 
 The `$refs.delete` constraint can be used with multiple collections and fields:
 
