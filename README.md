@@ -12,7 +12,7 @@ Lark is a modern, lightweight app framework designed specifically for developing
 - [Exception Handling](#exception-handling)
 - [Debugger](#debugger)
 - [Configuration & Bindings](#configuration--bindings)
-- [Environment Configuration](#environment-configuration)
+- [Environment Variables & Configuration](#environment-variables--configuration)
 - [Request](#request)
 - [Response](#response)
 - [Database](#database)
@@ -494,7 +494,7 @@ Custom validator rules can be registered using `validator.rule.[type].[ruleClass
 app()->use('validator.rule.string.beginWithEndWith', App\Validator\BeginWithEndWith::class);
 ```
 
-## Environment Configuration
+## Environment Variables & Configuration
 
 `Lark\Env` is used for app environment variables and configuration. The helper function [`env()`](#helper-env) is available.
 
@@ -2379,7 +2379,7 @@ The `env()` function is an environment variables helper.
 $dbName = env('DB_NAME');
 ```
 
-> Read more in [Environment Configuration](#environment-configuration).
+> Read more in [Environment Variables & Configuration](#environment-variables--configuration).
 
 ### Helper `f()`
 

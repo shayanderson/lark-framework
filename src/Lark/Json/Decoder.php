@@ -10,8 +10,6 @@ declare(strict_types=1);
 
 namespace Lark\Json;
 
-use Lark\Exception;
-
 /**
  * JSON decoder
  *
@@ -27,7 +25,7 @@ class Decoder
 	 * @param integer $depth
 	 * @param integer $flags
 	 * @return mixed Null if the string cannot be decoded or data is deeper than the nesting limit
-	 * @throws Exception On JSON decode error
+	 * @throws \JsonException On JSON decode error
 	 */
 	public static function decode(
 		string $json,

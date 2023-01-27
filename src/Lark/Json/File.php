@@ -22,7 +22,7 @@ class File extends \Lark\File
 	 *
 	 * @param boolean|null $associative
 	 * @return mixed
-	 * @throws \Lark\Exception on JSON decode error
+	 * @throws \JsonException on JSON decode error
 	 */
 	public function read(?bool $associative = null)
 	{

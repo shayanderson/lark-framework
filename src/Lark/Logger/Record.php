@@ -93,4 +93,21 @@ class Record
 		}
 		$this->timestamp = time();
 	}
+
+	/**
+	 * Dynamic prop setter
+	 *
+	 * @param string $name
+	 * @param mixed $value
+	 * @return void
+	 */
+	public function __set(string $name, mixed $value): void
+	{
+		if (property_exists($this, $name))
+		{
+			throw new Exception('Logger record property "' . $name . '" already exists');
+		}
+
+		$this->{$name} = $value;
+	}
 }
