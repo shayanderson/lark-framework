@@ -1301,7 +1301,7 @@ In the above examples the `createdAt` field will be set once (using schema defau
 
 ### Database Model Schema Constraints
 
-Database model schema constraints can be used as database constraints on references like verifying foreign keys and delete cascades.
+Database model schema constraints can be used as database constraints on references like verifying foreign keys and deleting documents by references.
 
 #### Refs Foreign Key Constraint
 
@@ -1440,7 +1440,7 @@ $schema = new Schema([
 
 #### Refs Clear Constraint
 
-The `$refs.clear` constraint allows clear field cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
+The `$refs.clear` constraint allows clearing field values, can be set in any model schema and is used with the `Database::deleteIds()` method.
 
 ```php
 class User extends Model
@@ -1483,7 +1483,7 @@ Now when the model database method `deleteIds()` is called the `$refs.clear` con
 
 #### Refs Delete Constraint
 
-The `$refs.delete` constraint allows delete cascades, can be set in any model schema and is used with the `Database::deleteIds()` method.
+The `$refs.delete` constraint allows deleting documents, can be set in any model schema and is used with the `Database::deleteIds()` method.
 
 ```php
 class User extends Model
