@@ -788,9 +788,9 @@ class Database
 		// workaround for bug in db->listCollections()
 		$cursor = $this->executeCommand(
 			new Command([
-				'listCollections' => 1,
-				'nameOnly' => 1,
-				'authorizedCollections' => 1
+				'listCollections' => true,
+				'nameOnly' => true,
+				'authorizedCollections' => true
 			])
 		);
 
@@ -1078,7 +1078,7 @@ class Database
 		try
 		{
 			$cursor = $this->executeCommand(
-				new Command(['ping' => 1]),
+				new Command(['ping' => true]),
 			);
 
 			$isOk = ($cursor->toArray()[0]->ok ?? null) == 1;
