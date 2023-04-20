@@ -10,7 +10,11 @@ declare(strict_types=1);
 
 namespace Lark\Database;
 
+use MongoDB\BSON\Decimal128;
+use MongoDB\BSON\Int64;
 use MongoDB\BSON\ObjectId;
+use MongoDB\BSON\Timestamp;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\Driver\Cursor;
 use MongoDB\Model\BSONDocument;
 use Traversable;
@@ -23,37 +27,105 @@ use Traversable;
 class Convert
 {
 	/**
+	 * Convert BSONDocument BSON objects to PHP types (recursively)
+	 *
+	 * @param array|stdClass $doc
+	 * @return array|stdClass
+	 */
+	private static function &bsonDocBsonToPhp(array | stdClass $doc): array | stdClass
+	{
+		$fn_set_prop = function ($k, $v) use (&$doc)
+		{
+			if (is_object($doc))
+			{
+				$doc->{$k} = $v;
+			}
+			else
+			{
+				$doc[$k] = $v;
+			}
+		};
+
+		foreach ($doc as $k => $v)
+		{
+			if (is_array($v) || $v instanceof stdClass)
+			{
+				if ($v)
+				{
+					$fn_set_prop($k, self::bsonDocBsonToPhp($v));
+				}
+			}
+			// convert BSON objects to PHP types
+			else if (is_object($v))
+			{
+				// ObjectId to string
+				if ($v instanceof ObjectId)
+				{
+					// "_id" => "id"
+					if ($k === '_id')
+					{
+						if (is_array($doc))
+						{
+							$doc = ['id' => $v->__toString()] + $doc;
+							unset($doc['_id']);
+						}
+						else
+						{
+							throw new DatabaseException(
+								'Unexpected object during BSON to PHP conversion'
+							);
+						}
+					}
+					else
+					{
+						$fn_set_prop($k, $v->__toString());
+					}
+				}
+				// Timestamp to int
+				else if ($v instanceof Timestamp)
+				{
+					$fn_set_prop($k, $v->getTimestamp());
+				}
+				// UTCDateTime to DateTime
+				else if ($v instanceof UTCDateTime)
+				{
+					$fn_set_prop($k, $v->toDateTime());
+				}
+				// Decimal128 to float
+				else if ($v instanceof Decimal128)
+				{
+					$fn_set_prop($k, floatval($v->__toString()));
+				}
+				// Int64 to int
+				else if ($v instanceof Int64)
+				{
+					$fn_set_prop($k, intval($v->__toString()));
+				}
+			}
+		}
+
+		return $doc;
+	}
+
+	/**
 	 * Convert MongoDB BSON doc to array
 	 *
 	 * @param BSONDocument|null $doc
 	 * @return array|null
 	 */
-	public static function &bsonDocToArray(?BSONDocument $doc): ?array
+	public static function &bsonDocToArray(?BSONDocument $bsonDoc): ?array
 	{
-		if (!$doc)
+		$doc = null;
+
+		if (!$bsonDoc)
 		{
-			$doc = null;
 			return $doc;
 		}
 
-		$doc = &self::iteratorToArrayRecursive($doc);
+		// convert BSONDocument to array
+		$doc = (array)\MongoDB\BSON\toPHP(\MongoDB\BSON\fromPHP($bsonDoc));
 
-		/** @var array $doc */
-		// convert [_id => ObjectId] to [id => string]
-		if (isset($doc['_id']))
-		{
-			if ($doc['_id'] instanceof ObjectId)
-			{
-				$doc = ['id' => $doc['_id']->__toString()] + $doc;
-			}
-			else
-			{
-				$doc = ['id' => $doc['_id']] + $doc;
-			}
-			unset($doc['_id']);
-		}
-
-		return $doc;
+		return self::bsonDocBsonToPhp($doc);
 	}
 
 	/**
@@ -144,27 +216,6 @@ class Convert
 		{
 			self::inputIdToObjectId($doc);
 		}
-	}
-
-	/**
-	 * Convert iterator to array recursively
-	 *
-	 * @param Traversable $iterator
-	 * @return array
-	 */
-	private static function &iteratorToArrayRecursive(Traversable $iterator): array
-	{
-		$a = iterator_to_array($iterator);
-
-		foreach ($a as $k => $v)
-		{
-			if (is_iterable($v))
-			{
-				$a[$k] = self::iteratorToArrayRecursive($v);
-			}
-		}
-
-		return $a;
 	}
 
 	/**
