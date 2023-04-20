@@ -18,6 +18,7 @@ use MongoDB\BSON\UTCDateTime;
 use MongoDB\Driver\Cursor;
 use MongoDB\Model\BSONDocument;
 use Traversable;
+use stdClass;
 
 /**
  * Database convert
@@ -30,9 +31,13 @@ class Convert
 	 * Convert BSONDocument BSON objects to PHP types (recursively)
 	 *
 	 * @param array|stdClass $doc
+	 * @param bool $root
 	 * @return array|stdClass
 	 */
-	private static function &bsonDocBsonToPhp(array | stdClass $doc): array | stdClass
+	private static function &bsonDocBsonToPhp(
+		array | stdClass $doc,
+		bool $root = true
+	): array | stdClass
 	{
 		$fn_set_prop = function ($k, $v) use (&$doc)
 		{
@@ -52,7 +57,7 @@ class Convert
 			{
 				if ($v)
 				{
-					$fn_set_prop($k, self::bsonDocBsonToPhp($v));
+					$fn_set_prop($k, self::bsonDocBsonToPhp($v, false));
 				}
 			}
 			// convert BSON objects to PHP types
@@ -61,8 +66,8 @@ class Convert
 				// ObjectId to string
 				if ($v instanceof ObjectId)
 				{
-					// "_id" => "id"
-					if ($k === '_id')
+					// "root._id" => "root.id"
+					if ($k === '_id' && $root)
 					{
 						if (is_array($doc))
 						{
@@ -102,6 +107,13 @@ class Convert
 					$fn_set_prop($k, intval($v->__toString()));
 				}
 			}
+		}
+
+		// "root._id" to "root.id" for string values
+		if ($root && isset($doc['_id']))
+		{
+			$doc = ['id' => $doc['_id']] + $doc;
+			unset($doc['_id']);
 		}
 
 		return $doc;
