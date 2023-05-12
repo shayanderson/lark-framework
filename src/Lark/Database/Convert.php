@@ -109,11 +109,16 @@ class Convert
 			}
 		}
 
-		// "root._id" to "root.id" for string values
-		if ($root && isset($doc['_id']))
+		// "doc._id" to "doc.id" for string values
+		if (($root || is_array($doc)) && isset($doc['_id']))
 		{
 			$doc = ['id' => $doc['_id']] + $doc;
 			unset($doc['_id']);
+		}
+		else if (is_object($doc) && property_exists($doc, '_id'))
+		{
+			$doc = (object)(['id' => $doc->_id] + (array)$doc);
+			unset($doc->_id);
 		}
 
 		return $doc;
