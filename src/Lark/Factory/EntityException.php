@@ -6,5 +6,15 @@
  * @license MIT License <https://github.com/shayanderson/lark-framework/blob/master/LICENSE.md>
  * @link <https://github.com/shayanderson/lark-framework>
 */
+declare(strict_types=1);
 
-const LARK_RELEASE = '0.25.0';
+namespace Lark\Factory;
+
+/**
+ * Entity exception
+ *
+ * @author Shay Anderson
+ */
+class EntityException extends \Lark\Exception
+{
+}
